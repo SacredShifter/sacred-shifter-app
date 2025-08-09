@@ -2,7 +2,9 @@ import { api, APIError } from "encore.dev/api";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
 import * as crypto from "crypto";
 
-const db = SQLDatabase.named("sacred_shifter");
+const db = new SQLDatabase("sacred_shifter", {
+  migrations: "./migrations",
+});
 
 interface RegisterRequest {
   email: string;

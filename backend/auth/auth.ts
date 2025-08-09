@@ -2,9 +2,7 @@ import { authHandler } from "encore.dev/auth";
 import { Header, Cookie, APIError, Gateway } from "encore.dev/api";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
 
-const db = new SQLDatabase("sacred_shifter", {
-  migrations: "./migrations",
-});
+const db = SQLDatabase.named("sacred_shifter");
 
 interface AuthParams {
   authorization?: Header<"Authorization">;
