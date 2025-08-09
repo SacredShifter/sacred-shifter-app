@@ -3,7 +3,7 @@ import { getAuthData } from "~encore/auth";
 import { aiDB } from "./db";
 import { secret } from "encore.dev/config";
 
-const openRouterKey = secret("OpenRouterKey");
+const openAIKey = secret("OPENAI_API_KEY");
 
 export interface AIMessage {
   id: string;
@@ -235,7 +235,7 @@ async function generateAIResponse(params: GenerateAIResponseParams): Promise<str
     const response = await fetch("https://openrouter.ai/api/v1/chat/completions", {
       method: "POST",
       headers: {
-        "Authorization": `Bearer ${openRouterKey()}`,
+        "Authorization": `Bearer ${openAIKey()}`,
         "Content-Type": "application/json",
         "HTTP-Referer": "https://sacred-shifter.app",
         "X-Title": "Sacred Shifter AI Assistant"
