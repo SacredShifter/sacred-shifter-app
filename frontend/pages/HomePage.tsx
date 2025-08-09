@@ -1,23 +1,81 @@
 import { useQuery } from '@tanstack/react-query';
-import { Sparkles, Users, BookOpen, Heart } from 'lucide-react';
+import { Rss, Users, BookOpen, Database, Brain, Play, Book, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
+import { Button } from '@/components/ui/button';
 import { useBackend } from '../contexts/AuthContext';
 import { useAuth } from '../contexts/AuthContext';
 import AIAssistant from '../components/AIAssistant';
 
+const modules = [
+  {
+    title: 'Sacred Feed',
+    description: 'Your personalized stream of consciousness transformation content',
+    icon: Rss,
+    href: '/feed',
+    action: 'Feed the Flame Within',
+    gradient: 'from-purple-500 to-indigo-600'
+  },
+  {
+    title: 'Sacred Circles',
+    description: 'Connect with fellow seekers in transformative group experiences',
+    icon: Users,
+    href: '/circles',
+    action: 'Step Into the Shared Field',
+    gradient: 'from-blue-500 to-cyan-600'
+  },
+  {
+    title: 'Mirror Journal',
+    description: 'Reflect, record, and analyze your inner journey',
+    icon: BookOpen,
+    href: '/journal',
+    action: 'Witness Your Soul Unfold',
+    gradient: 'from-green-500 to-emerald-600'
+  },
+  {
+    title: 'Resonance Register',
+    description: 'Document meaningful synchronicities and spiritual experiences',
+    icon: Database,
+    href: '/resonance-register',
+    action: 'Anchor the Synchronicities',
+    gradient: 'from-orange-500 to-red-600'
+  },
+  {
+    title: 'Personal Codex',
+    description: 'Your private collection of wisdom, insights, and revelations',
+    icon: Brain,
+    href: '/personal-codex',
+    action: 'Encode Your Revelations',
+    gradient: 'from-purple-600 to-pink-600'
+  },
+  {
+    title: 'YouTube Library',
+    description: 'Curated video content for consciousness expansion',
+    icon: Play,
+    href: '/youtube',
+    action: 'Expand Your Awareness',
+    gradient: 'from-red-500 to-orange-600'
+  },
+  {
+    title: 'Sacred Shifter Guidebook',
+    description: 'Ancient wisdom for modern transformation',
+    icon: Book,
+    href: '/guidebook',
+    action: 'Access the Wisdom',
+    gradient: 'from-indigo-500 to-purple-600'
+  },
+  {
+    title: 'Support Sacred Shifter',
+    description: 'Fuel the frequency with donations and premium modules',
+    icon: Heart,
+    href: '/support',
+    action: 'Amplify the Mission',
+    gradient: 'from-pink-500 to-rose-600'
+  }
+];
+
 export default function HomePage() {
   const { user } = useAuth();
   const backend = useBackend();
-
-  const { data: echoGlyphs } = useQuery({
-    queryKey: ['echo-glyphs'],
-    queryFn: () => backend.echo_glyphs.list(),
-  });
-
-  const { data: sharedLearnings } = useQuery({
-    queryKey: ['shared-learnings'],
-    queryFn: () => backend.community.listSharedLearnings(),
-  });
 
   const { data: journalEntries } = useQuery({
     queryKey: ['journal-entries'],
@@ -35,141 +93,81 @@ export default function HomePage() {
       email: user?.email
     },
     overview: {
-      echo_glyphs_count: echoGlyphs?.glyphs.length || 0,
-      community_posts_count: sharedLearnings?.learnings.length || 0,
       journal_entries_count: journalEntries?.entries.length || 0,
       meditation_sessions: meditationAnalytics?.completed_sessions || 0
     },
     recent_activity: {
-      recent_glyphs: echoGlyphs?.glyphs.slice(0, 3).map(g => g.name) || [],
-      recent_learnings: sharedLearnings?.learnings.slice(0, 3).map(l => l.title) || [],
       recent_entries: journalEntries?.entries.slice(0, 3).map(e => e.title) || []
     }
   };
 
   return (
-    <div className="space-y-8">
-      <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-          Welcome to Sacred Shifter, {user?.username}
-        </h1>
-        <p className="text-lg text-gray-600 max-w-2xl mx-auto">
-          Your metaphysical operating system for consciousness elevation, community connection, and spiritual growth.
-        </p>
-      </div>
-
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6">
-        <Card className="bg-gradient-to-br from-purple-50 to-indigo-50 border-purple-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Echo Glyphs</CardTitle>
-            <Sparkles className="h-4 w-4 text-purple-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-purple-700">
-              {echoGlyphs?.glyphs.length || 0}
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
+      <div className="relative">
+        {/* Header */}
+        <div className="text-center py-16 px-4">
+          <div className="mb-8">
+            <div className="inline-flex items-center space-x-3 mb-4">
+              <div className="w-12 h-12 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-full flex items-center justify-center">
+                <span className="text-white font-bold text-lg">SS</span>
+              </div>
+              <h1 className="text-4xl font-bold text-white">
+                Sacred Shifter
+              </h1>
             </div>
-            <p className="text-xs text-gray-600">
-              Resonance patterns discovered
+            <p className="text-xl text-purple-200 max-w-2xl mx-auto">
+              Your consciousness transformation toolkit
             </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-blue-50 to-cyan-50 border-blue-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Community Posts</CardTitle>
-            <Users className="h-4 w-4 text-blue-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-blue-700">
-              {sharedLearnings?.learnings.length || 0}
-            </div>
-            <p className="text-xs text-gray-600">
-              Shared wisdom entries
+            <p className="text-sm text-purple-300 mt-2">
+              Signed in as: {user?.email}
             </p>
-          </CardContent>
-        </Card>
+          </div>
+        </div>
 
-        <Card className="bg-gradient-to-br from-green-50 to-emerald-50 border-green-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Journal Entries</CardTitle>
-            <BookOpen className="h-4 w-4 text-green-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-green-700">
-              {journalEntries?.entries.length || 0}
-            </div>
-            <p className="text-xs text-gray-600">
-              Personal reflections
-            </p>
-          </CardContent>
-        </Card>
-
-        <Card className="bg-gradient-to-br from-pink-50 to-rose-50 border-pink-200">
-          <CardHeader className="flex flex-row items-center justify-between space-y-0 pb-2">
-            <CardTitle className="text-sm font-medium">Consciousness</CardTitle>
-            <Heart className="h-4 w-4 text-pink-600" />
-          </CardHeader>
-          <CardContent>
-            <div className="text-2xl font-bold text-pink-700">
-              Expanding
-            </div>
-            <p className="text-xs text-gray-600">
-              Your spiritual journey
-            </p>
-          </CardContent>
-        </Card>
-      </div>
-
-      <div className="grid grid-cols-1 lg:grid-cols-2 gap-8">
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Sparkles className="w-5 h-5 mr-2 text-purple-600" />
-              Recent Echo Glyphs
-            </CardTitle>
-            <CardDescription>
-              Latest resonance patterns in the collective consciousness
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {echoGlyphs?.glyphs.slice(0, 3).map((glyph) => (
-                <div key={glyph.id} className="flex items-center space-x-3">
-                  <div className="w-12 h-12 rounded-lg bg-gradient-to-br from-purple-100 to-indigo-100 flex items-center justify-center">
-                    <Sparkles className="w-6 h-6 text-purple-600" />
+        {/* Modules Grid */}
+        <div className="px-8 pb-16">
+          <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 max-w-7xl mx-auto">
+            {modules.map((module, index) => (
+              <Card 
+                key={module.title} 
+                className="group relative overflow-hidden border-0 bg-white/10 backdrop-blur-lg hover:bg-white/20 transition-all duration-300 cursor-pointer"
+              >
+                <div className={`absolute inset-0 bg-gradient-to-br ${module.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
+                <CardHeader className="relative z-10 pb-4">
+                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-white/20 mb-4">
+                    <module.icon className="w-6 h-6 text-white" />
                   </div>
-                  <div>
-                    <p className="font-medium text-gray-900">{glyph.name}</p>
-                    <p className="text-sm text-gray-500">{glyph.resonance_type}</p>
-                  </div>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+                  <CardTitle className="text-lg text-white group-hover:text-purple-100 transition-colors">
+                    {module.title}
+                  </CardTitle>
+                  <CardDescription className="text-purple-200 text-sm leading-relaxed">
+                    {module.description}
+                  </CardDescription>
+                </CardHeader>
+                <CardContent className="relative z-10 pt-0">
+                  <Button 
+                    variant="outline" 
+                    size="sm"
+                    className="w-full bg-white/10 border-white/20 text-white hover:bg-white/20 hover:border-white/30"
+                    onClick={() => window.location.href = module.href}
+                  >
+                    {module.action}
+                  </Button>
+                </CardContent>
+              </Card>
+            ))}
+          </div>
+        </div>
 
-        <Card>
-          <CardHeader>
-            <CardTitle className="flex items-center">
-              <Users className="w-5 h-5 mr-2 text-blue-600" />
-              Community Wisdom
-            </CardTitle>
-            <CardDescription>
-              Recent insights shared by the community
-            </CardDescription>
-          </CardHeader>
-          <CardContent>
-            <div className="space-y-4">
-              {sharedLearnings?.learnings.slice(0, 3).map((learning) => (
-                <div key={learning.id} className="space-y-2">
-                  <p className="font-medium text-gray-900">{learning.title}</p>
-                  <p className="text-sm text-gray-600 line-clamp-2">{learning.content}</p>
-                  <p className="text-xs text-gray-500">by {learning.username}</p>
-                </div>
-              ))}
-            </div>
-          </CardContent>
-        </Card>
+        {/* Footer */}
+        <div className="text-center pb-8 px-4">
+          <p className="text-purple-300 text-sm">
+            Ancient wisdom for modern transformation. Your comprehensive guide to consciousness expansion and sacred technology integration.
+          </p>
+          <p className="text-purple-400 text-xs mt-2">
+            Version 1.0 - Living Document
+          </p>
+        </div>
       </div>
 
       <AIAssistant 
