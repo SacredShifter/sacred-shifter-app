@@ -1,8 +1,6 @@
 import { authHandler } from "encore.dev/auth";
 import { Header, Cookie, APIError, Gateway } from "encore.dev/api";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
-
-const db = SQLDatabase.named("sacred_shifter");
+import { authDB } from "./db";
 
 interface AuthParams {
   authorization?: Header<"Authorization">;
@@ -23,7 +21,7 @@ const auth = authHandler<AuthParams, AuthData>(
     }
 
     try {
-      const user = await db.queryRow<{
+      const user = await authDB.queryRow<{
         id: string;
         email: string;
         username: string;

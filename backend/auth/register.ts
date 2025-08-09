@@ -1,10 +1,6 @@
 import { api, APIError } from "encore.dev/api";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
 import * as crypto from "crypto";
-
-const db = new SQLDatabase("sacred_shifter", {
-  migrations: "./migrations",
-});
+import { authDB } from "./db";
 
 interface RegisterRequest {
   email: string;
@@ -28,7 +24,7 @@ export const register = api<RegisterRequest, RegisterResponse>(
     const { email, username, password } = req;
 
     // Check if user already exists
-    const existingUser = await db.queryRow`
+    const existingUser = await authDB.queryRow`
       SELECT id FROM users WHERE email = ${email} OR username = ${username}
     `;
 
@@ -43,7 +39,7 @@ export const register = api<RegisterRequest, RegisterResponse>(
     const sessionToken = crypto.randomBytes(32).toString('hex');
 
     // Create user
-    const user = await db.queryRow<{
+    const user = await authDB.queryRow<{
       id: string;
       email: string;
       username: string;
