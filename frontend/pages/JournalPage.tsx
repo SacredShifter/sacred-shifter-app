@@ -1,34 +1,38 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { BookOpen, Plus, Edit, Trash2, Save, X } from 'lucide-react';
+import { BookOpen, Plus, Edit, Trash2, Save, X, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
-import backend from '~backend/client';
+import { journalClient } from '../lib/moduleClient';
+import { useModuleStatus } from '../hooks/useModuleHealth';
+import ModuleHealthIndicator from '../components/ModuleHealthIndicator';
 import AIAssistant from '../components/AIAssistant';
-import type { JournalEntry } from '~backend/journal/entries';
 
 export default function JournalPage() {
   const [newEntryTitle, setNewEntryTitle] = useState('');
   const [newEntryContent, setNewEntryContent] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
+  const [editingEntry, setEditingEntry] = useState<any>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isHealthy, isDegraded } = useModuleStatus('journal');
 
-  const { data: journalEntries, isLoading } = useQuery({
+  const { data: journalEntries, isLoading, error } = useQuery({
     queryKey: ['journal-entries'],
-    queryFn: () => backend.journal.listEntries(),
+    queryFn: () => journalClient.listEntries(),
+    enabled: isHealthy || isDegraded, // Only fetch if module is at least partially working
   });
 
   const createEntryMutation = useMutation({
     mutationFn: (data: { title: string; content: string }) =>
-      backend.journal.createEntry(data),
+      journalClient.createEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       setNewEntryTitle('');
@@ -51,7 +55,7 @@ export default function JournalPage() {
 
   const updateEntryMutation = useMutation({
     mutationFn: (data: { id: string; title: string; content: string }) =>
-      backend.journal.updateEntry(data),
+      journalClient.updateEntry(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       setEditingEntry(null);
@@ -71,7 +75,7 @@ export default function JournalPage() {
   });
 
   const deleteEntryMutation = useMutation({
-    mutationFn: (id: string) => backend.journal.deleteEntry({ id }),
+    mutationFn: (id: string) => journalClient.deleteEntry(id),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['journal-entries'] });
       toast({
@@ -105,7 +109,7 @@ export default function JournalPage() {
     });
   };
 
-  const handleEditEntry = (entry: JournalEntry) => {
+  const handleEditEntry = (entry: any) => {
     setEditingEntry(entry);
     setEditTitle(entry.title);
     setEditContent(entry.content);
@@ -154,19 +158,38 @@ export default function JournalPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent mb-4">
-          Personal Journal
-        </h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-green-600 to-emerald-600 bg-clip-text text-transparent">
+            Personal Journal
+          </h1>
+          <ModuleHealthIndicator moduleName="journal" showLabel size="md" />
+        </div>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Document your spiritual journey, insights, and reflections in your private sacred space.
         </p>
       </div>
 
+      {/* Module Status Alert */}
+      {!isHealthy && (
+        <Alert variant={isDegraded ? "default" : "destructive"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {isDegraded 
+              ? "Journal module is experiencing some issues. Some features may be limited."
+              : "Journal module is currently unavailable. Please try again later."
+            }
+          </AlertDescription>
+        </Alert>
+      )}
+
       <div className="flex items-center justify-between">
         <h2 className="text-2xl font-bold text-gray-900">Your Entries</h2>
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-green-600 hover:bg-green-700">
+            <Button 
+              className="bg-green-600 hover:bg-green-700"
+              disabled={!isHealthy && !isDegraded}
+            >
               <Plus className="w-4 h-4 mr-2" />
               New Entry
             </Button>
@@ -218,6 +241,7 @@ export default function JournalPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleEditEntry(entry)}
+                    disabled={!isHealthy && !isDegraded}
                   >
                     <Edit className="w-4 h-4" />
                   </Button>
@@ -225,6 +249,7 @@ export default function JournalPage() {
                     variant="ghost"
                     size="sm"
                     onClick={() => handleDeleteEntry(entry.id)}
+                    disabled={!isHealthy && !isDegraded}
                   >
                     <Trash2 className="w-4 h-4" />
                   </Button>
@@ -246,7 +271,10 @@ export default function JournalPage() {
             <p className="text-gray-500 text-center mb-4">
               Start documenting your spiritual journey by creating your first entry.
             </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)}>
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)}
+              disabled={!isHealthy && !isDegraded}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Create First Entry
             </Button>

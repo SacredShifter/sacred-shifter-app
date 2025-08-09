@@ -1,51 +1,22 @@
-import { api, APIError } from "encore.dev/api";
-import { meditationDB } from "./db";
+import { api } from "encore.dev/api";
+import { MeditationService } from "./service";
+import type { 
+  MeditationSession,
+  StartSessionRequest,
+  EndSessionRequest,
+  ListSessionsRequest,
+  ListSessionsResponse,
+  CurrentSessionResponse
+} from "./types";
 
-export interface MeditationSession {
-  id: string;
-  user_id: string;
-  soundscape: string;
-  duration_seconds: number | null;
-  completed: boolean;
-  started_at: Date;
-  ended_at: Date | null;
-  created_at: Date;
-}
-
-interface StartSessionRequest {
-  soundscape: string;
-}
-
-interface EndSessionRequest {
-  id: string;
-}
-
-interface ListSessionsResponse {
-  sessions: MeditationSession[];
-}
-
-interface CurrentSessionResponse {
-  session: MeditationSession | null;
-}
+const meditationService = new MeditationService();
 
 // Starts a new meditation session.
 export const startSession = api<StartSessionRequest, MeditationSession>(
   { expose: true, method: "POST", path: "/meditation/sessions/start" },
   async (req) => {
-    const { soundscape } = req;
     const userId = "default-user"; // Use default user since no auth
-
-    const session = await meditationDB.queryRow<MeditationSession>`
-      INSERT INTO meditation_sessions (user_id, soundscape)
-      VALUES (${userId}, ${soundscape})
-      RETURNING id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
-    `;
-
-    if (!session) {
-      throw APIError.internal("failed to start meditation session");
-    }
-
-    return session;
+    return await meditationService.startSession(userId, req);
   }
 );
 
@@ -53,41 +24,8 @@ export const startSession = api<StartSessionRequest, MeditationSession>(
 export const endSession = api<EndSessionRequest, MeditationSession>(
   { expose: true, method: "PUT", path: "/meditation/sessions/:id/end" },
   async (req) => {
-    const { id } = req;
     const userId = "default-user"; // Use default user since no auth
-
-    const session = await meditationDB.queryRow<MeditationSession>`
-      UPDATE meditation_sessions
-      SET 
-        ended_at = NOW(),
-        completed = TRUE,
-        duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
-      WHERE id = ${id} AND user_id = ${userId}
-      RETURNING id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
-    `;
-
-    if (!session) {
-      throw APIError.notFound("meditation session not found");
-    }
-
-    return session;
-  }
-);
-
-// Retrieves all meditation sessions for the current user.
-export const listSessions = api<void, ListSessionsResponse>(
-  { expose: true, method: "GET", path: "/meditation/sessions" },
-  async () => {
-    const userId = "default-user"; // Use default user since no auth
-
-    const sessions = await meditationDB.queryAll<MeditationSession>`
-      SELECT id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
-      FROM meditation_sessions
-      WHERE user_id = ${userId}
-      ORDER BY started_at DESC
-    `;
-
-    return { sessions };
+    return await meditationService.endSession(userId, req);
   }
 );
 
@@ -96,15 +34,15 @@ export const getCurrentSession = api<void, CurrentSessionResponse>(
   { expose: true, method: "GET", path: "/meditation/sessions/current" },
   async () => {
     const userId = "default-user"; // Use default user since no auth
+    return await meditationService.getCurrentSession(userId);
+  }
+);
 
-    const session = await meditationDB.queryRow<MeditationSession>`
-      SELECT id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
-      FROM meditation_sessions
-      WHERE user_id = ${userId} AND completed = FALSE
-      ORDER BY started_at DESC
-      LIMIT 1
-    `;
-
-    return { session };
+// Retrieves meditation sessions for the current user.
+export const listSessions = api<ListSessionsRequest, ListSessionsResponse>(
+  { expose: true, method: "GET", path: "/meditation/sessions" },
+  async (req) => {
+    const userId = "default-user"; // Use default user since no auth
+    return await meditationService.listSessions(userId, req);
   }
 );

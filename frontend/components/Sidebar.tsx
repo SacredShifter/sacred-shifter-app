@@ -1,18 +1,19 @@
 import { Link, useLocation } from 'react-router-dom';
 import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
+import ModuleHealthIndicator from './ModuleHealthIndicator';
 
 const coreNavigation = [
   { name: 'Home', href: '/', icon: Home },
-  { name: 'Feed', href: '/feed', icon: Rss },
-  { name: 'Messages', href: '/messages', icon: Users },
+  { name: 'Feed', href: '/feed', icon: Rss, module: 'community' },
+  { name: 'Messages', href: '/messages', icon: Users, module: 'community' },
 ];
 
 const sacredTools = [
-  { name: 'Journal', href: '/journal', icon: BookOpen },
-  { name: 'Circles', href: '/circles', icon: Users },
-  { name: 'Resonance Register', href: '/resonance-register', icon: Database },
-  { name: 'Personal Codex', href: '/personal-codex', icon: Brain },
+  { name: 'Journal', href: '/journal', icon: BookOpen, module: 'journal' },
+  { name: 'Circles', href: '/circles', icon: Users, module: 'community' },
+  { name: 'Resonance Register', href: '/resonance-register', icon: Database, module: 'echo_glyphs' },
+  { name: 'Personal Codex', href: '/personal-codex', icon: Brain, module: 'ai' },
 ];
 
 const media = [
@@ -44,14 +45,19 @@ export default function Sidebar() {
             <Link
               key={item.name}
               to={item.href}
-              className={`flex items-center px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
+              className={`flex items-center justify-between px-3 py-2 text-sm font-medium rounded-lg transition-colors ${
                 isActive
                   ? 'bg-purple-100 text-purple-700 border border-purple-200'
                   : 'text-gray-600 hover:bg-purple-50 hover:text-purple-600'
               }`}
             >
-              <item.icon className="w-4 h-4 mr-3" />
-              {item.name}
+              <div className="flex items-center">
+                <item.icon className="w-4 h-4 mr-3" />
+                {item.name}
+              </div>
+              {'module' in item && (
+                <ModuleHealthIndicator moduleName={item.module} />
+              )}
             </Link>
           );
         })}
@@ -86,6 +92,18 @@ export default function Sidebar() {
             <div className="text-sm">
               <p className="font-medium text-gray-900">Sacred Seeker</p>
               <p className="text-gray-500 text-xs">Welcome to Sacred Shifter</p>
+            </div>
+          </div>
+          
+          {/* System Health Summary */}
+          <div className="flex items-center justify-between text-xs text-gray-500">
+            <span>System Status</span>
+            <div className="flex items-center space-x-1">
+              <ModuleHealthIndicator moduleName="journal" />
+              <ModuleHealthIndicator moduleName="meditation" />
+              <ModuleHealthIndicator moduleName="community" />
+              <ModuleHealthIndicator moduleName="ai" />
+              <ModuleHealthIndicator moduleName="echo_glyphs" />
             </div>
           </div>
         </div>
