@@ -1,9 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { communityDB } from "./db";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
-
-const usersDB = SQLDatabase.named("sacred_shifter");
 
 export interface Message {
   id: string;
@@ -32,15 +29,6 @@ export const sendMessage = api<SendMessageRequest, Message>(
     const auth = getAuthData()!;
     const { recipient_id, content } = req;
 
-    // Verify recipient exists
-    const recipient = await usersDB.queryRow<{ username: string }>`
-      SELECT username FROM users WHERE id = ${recipient_id}
-    `;
-
-    if (!recipient) {
-      throw APIError.notFound("recipient not found");
-    }
-
     const message = await communityDB.queryRow<{
       id: string;
       sender_id: string;
@@ -61,7 +49,7 @@ export const sendMessage = api<SendMessageRequest, Message>(
     return {
       ...message,
       sender_username: auth.username,
-      recipient_username: recipient.username,
+      recipient_username: `User_${recipient_id.substring(0, 8)}`,
     };
   }
 );
@@ -72,33 +60,28 @@ export const listMessages = api<void, ListMessagesResponse>(
   async () => {
     const auth = getAuthData()!;
 
-    const messages = await communityDB.rawQueryAll<{
+    const messages = await communityDB.queryAll<{
       id: string;
       sender_id: string;
-      sender_username: string;
       recipient_id: string;
-      recipient_username: string;
       content: string;
       read_at: Date | null;
       created_at: Date;
-    }>(`
-      SELECT 
-        m.id,
-        m.sender_id,
-        s.username as sender_username,
-        m.recipient_id,
-        r.username as recipient_username,
-        m.content,
-        m.read_at,
-        m.created_at
-      FROM messages m
-      JOIN users s ON m.sender_id = s.id
-      JOIN users r ON m.recipient_id = r.id
-      WHERE m.sender_id = $1 OR m.recipient_id = $1
-      ORDER BY m.created_at DESC
-    `, auth.userID);
+    }>`
+      SELECT id, sender_id, recipient_id, content, read_at, created_at
+      FROM messages
+      WHERE sender_id = ${auth.userID} OR recipient_id = ${auth.userID}
+      ORDER BY created_at DESC
+    `;
 
-    return { messages };
+    // Add placeholder usernames since we can't join across databases
+    const messagesWithUsernames: Message[] = messages.map(message => ({
+      ...message,
+      sender_username: message.sender_id === auth.userID ? auth.username : `User_${message.sender_id.substring(0, 8)}`,
+      recipient_username: message.recipient_id === auth.userID ? auth.username : `User_${message.recipient_id.substring(0, 8)}`,
+    }));
+
+    return { messages: messagesWithUsernames };
   }
 );
 
