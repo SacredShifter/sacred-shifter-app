@@ -66,9 +66,7 @@ export function AuthProvider({ children }: AuthProviderProps) {
   const login = async (email: string, password: string) => {
     try {
       const response = await backend.auth.login({ email, password });
-      // Extract the session token from the cookie response
-      const sessionToken = response.session.value;
-      localStorage.setItem('auth_token', sessionToken);
+      localStorage.setItem('auth_token', response.token);
       setUser(response.user);
     } catch (error) {
       console.error('Login error:', error);

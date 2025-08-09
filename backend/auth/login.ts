@@ -1,4 +1,4 @@
-import { api, APIError, Cookie } from "encore.dev/api";
+import { api, APIError } from "encore.dev/api";
 import { SQLDatabase } from "encore.dev/storage/sqldb";
 import * as crypto from "crypto";
 
@@ -15,7 +15,7 @@ interface LoginResponse {
     email: string;
     username: string;
   };
-  session: Cookie<"session">;
+  token: string;
 }
 
 // Logs in a user with email and password.
@@ -54,13 +54,7 @@ export const login = api<LoginRequest, LoginResponse>(
 
     return {
       user,
-      session: {
-        value: sessionToken,
-        expires: new Date(Date.now() + 30 * 24 * 60 * 60 * 1000), // 30 days
-        httpOnly: true,
-        secure: true,
-        sameSite: "Lax",
-      }
+      token: sessionToken,
     };
   }
 );
