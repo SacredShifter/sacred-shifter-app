@@ -1,11 +1,12 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Sparkles, Users, BookOpen, LogOut } from 'lucide-react';
+import { Home, Sparkles, Users, BookOpen, Brain, LogOut } from 'lucide-react';
 import { useAuth } from '../contexts/AuthContext';
 import { Button } from '@/components/ui/button';
 
 const navigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Echo Glyphs', href: '/echo-glyphs', icon: Sparkles },
+  { name: 'Meditation', href: '/meditation', icon: Brain },
   { name: 'Community', href: '/community', icon: Users },
   { name: 'Journal', href: '/journal', icon: BookOpen },
 ];

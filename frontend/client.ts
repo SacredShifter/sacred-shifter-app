@@ -37,6 +37,7 @@ export class Client {
     public readonly community: community.ServiceClient
     public readonly echo_glyphs: echo_glyphs.ServiceClient
     public readonly journal: journal.ServiceClient
+    public readonly meditation: meditation.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
 
@@ -55,6 +56,7 @@ export class Client {
         this.community = new community.ServiceClient(base)
         this.echo_glyphs = new echo_glyphs.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
+        this.meditation = new meditation.ServiceClient(base)
     }
 
     /**
@@ -315,6 +317,78 @@ export namespace journal {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/journal/entries/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_journal_entries_updateEntry>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { getAnalytics as api_meditation_analytics_getAnalytics } from "~backend/meditation/analytics";
+import {
+    endSession as api_meditation_sessions_endSession,
+    getCurrentSession as api_meditation_sessions_getCurrentSession,
+    listSessions as api_meditation_sessions_listSessions,
+    startSession as api_meditation_sessions_startSession
+} from "~backend/meditation/sessions";
+
+export namespace meditation {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.endSession = this.endSession.bind(this)
+            this.getAnalytics = this.getAnalytics.bind(this)
+            this.getCurrentSession = this.getCurrentSession.bind(this)
+            this.listSessions = this.listSessions.bind(this)
+            this.startSession = this.startSession.bind(this)
+        }
+
+        /**
+         * Ends a meditation session and marks it as completed.
+         */
+        public async endSession(params: { id: string }): Promise<ResponseType<typeof api_meditation_sessions_endSession>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/${encodeURIComponent(params.id)}/end`, {method: "PUT", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_endSession>
+        }
+
+        /**
+         * Retrieves meditation analytics for the current user.
+         */
+        public async getAnalytics(): Promise<ResponseType<typeof api_meditation_analytics_getAnalytics>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/analytics`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_analytics_getAnalytics>
+        }
+
+        /**
+         * Gets the current active session for the user.
+         */
+        public async getCurrentSession(): Promise<ResponseType<typeof api_meditation_sessions_getCurrentSession>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/current`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_getCurrentSession>
+        }
+
+        /**
+         * Retrieves all meditation sessions for the current user.
+         */
+        public async listSessions(): Promise<ResponseType<typeof api_meditation_sessions_listSessions>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_listSessions>
+        }
+
+        /**
+         * Starts a new meditation session.
+         */
+        public async startSession(params: RequestType<typeof api_meditation_sessions_startSession>): Promise<ResponseType<typeof api_meditation_sessions_startSession>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/start`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_startSession>
         }
     }
 }

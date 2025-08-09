@@ -1,8 +1,9 @@
 import { useState } from 'react';
-import { Play, Pause, Volume2, ChevronUp, ChevronDown } from 'lucide-react';
+import { Play, Pause, Volume2, ChevronUp, ChevronDown, Square } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Slider } from '@/components/ui/slider';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { Badge } from '@/components/ui/badge';
 import { useMeditation } from '../contexts/MeditationContext';
 
 const soundscapes = [
@@ -13,11 +14,53 @@ const soundscapes = [
   { id: 'cosmic', name: 'Cosmic Frequencies', description: 'Ethereal space sounds' },
 ];
 
+function formatDuration(seconds: number): string {
+  const mins = Math.floor(seconds / 60);
+  const secs = seconds % 60;
+  return `${mins}:${secs.toString().padStart(2, '0')}`;
+}
+
 export default function MeditationPlayer() {
   const [isExpanded, setIsExpanded] = useState(false);
-  const { isPlaying, currentSoundscape, volume, setIsPlaying, setCurrentSoundscape, setVolume } = useMeditation();
+  const { 
+    isPlaying, 
+    currentSoundscape, 
+    volume, 
+    currentSession,
+    sessionDuration,
+    setIsPlaying, 
+    setCurrentSoundscape, 
+    setVolume,
+    startMeditationSession,
+    endMeditationSession
+  } = useMeditation();
 
   const currentSoundscapeData = soundscapes.find(s => s.id === currentSoundscape);
+  const hasActiveSession = currentSession && !currentSession.completed;
+
+  const handlePlayPause = async () => {
+    if (hasActiveSession) {
+      setIsPlaying(!isPlaying);
+    } else {
+      // Start new session
+      await startMeditationSession(currentSoundscape);
+    }
+  };
+
+  const handleStop = async () => {
+    if (hasActiveSession) {
+      await endMeditationSession();
+    }
+  };
+
+  const handleSoundscapeChange = async (newSoundscape: string) => {
+    setCurrentSoundscape(newSoundscape);
+    if (hasActiveSession) {
+      // End current session and start new one
+      await endMeditationSession();
+      await startMeditationSession(newSoundscape);
+    }
+  };
 
   return (
     <div className="fixed bottom-4 right-4 z-50">
@@ -37,8 +80,24 @@ export default function MeditationPlayer() {
               </Button>
             </div>
 
+            {hasActiveSession && (
+              <div className="bg-green-50 rounded-lg p-3 border border-green-200">
+                <div className="flex items-center justify-between mb-2">
+                  <Badge variant="secondary" className="bg-green-100 text-green-800">
+                    Active Session
+                  </Badge>
+                  <span className="text-lg font-mono text-green-700">
+                    {formatDuration(sessionDuration)}
+                  </span>
+                </div>
+                <p className="text-sm text-green-600">
+                  {currentSoundscapeData?.name}
+                </p>
+              </div>
+            )}
+
             <div className="space-y-3">
-              <Select value={currentSoundscape} onValueChange={setCurrentSoundscape}>
+              <Select value={currentSoundscape} onValueChange={handleSoundscapeChange}>
                 <SelectTrigger>
                   <SelectValue />
                 </SelectTrigger>
@@ -54,14 +113,26 @@ export default function MeditationPlayer() {
                 </SelectContent>
               </Select>
 
-              <div className="flex items-center space-x-3">
+              <div className="flex items-center space-x-2">
                 <Button
                   variant="outline"
                   size="sm"
-                  onClick={() => setIsPlaying(!isPlaying)}
+                  onClick={handlePlayPause}
+                  className="flex-shrink-0"
                 >
                   {isPlaying ? <Pause className="w-4 h-4" /> : <Play className="w-4 h-4" />}
                 </Button>
+
+                {hasActiveSession && (
+                  <Button
+                    variant="outline"
+                    size="sm"
+                    onClick={handleStop}
+                    className="flex-shrink-0"
+                  >
+                    <Square className="w-4 h-4" />
+                  </Button>
+                )}
 
                 <div className="flex items-center space-x-2 flex-1">
                   <Volume2 className="w-4 h-4 text-gray-500" />
@@ -85,8 +156,11 @@ export default function MeditationPlayer() {
             variant="ghost"
             size="sm"
             onClick={() => setIsExpanded(true)}
-            className="w-full h-full rounded-lg"
+            className="w-full h-full rounded-lg relative"
           >
+            {hasActiveSession && (
+              <div className="absolute -top-1 -right-1 w-3 h-3 bg-green-500 rounded-full animate-pulse"></div>
+            )}
             {isPlaying ? <Pause className="w-6 h-6" /> : <Play className="w-6 h-6" />}
           </Button>
         )}
