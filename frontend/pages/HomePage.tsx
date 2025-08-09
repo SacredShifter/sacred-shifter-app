@@ -2,8 +2,7 @@ import { useQuery } from '@tanstack/react-query';
 import { Rss, Users, BookOpen, Database, Brain, Play, Book, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
-import { useBackend } from '../contexts/AuthContext';
-import { useAuth } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
 
 const modules = [
@@ -74,9 +73,6 @@ const modules = [
 ];
 
 export default function HomePage() {
-  const { user } = useAuth();
-  const backend = useBackend();
-
   const { data: journalEntries } = useQuery({
     queryKey: ['journal-entries'],
     queryFn: () => backend.journal.listEntries(),
@@ -89,8 +85,8 @@ export default function HomePage() {
 
   const homeContextData = {
     user: {
-      username: user?.username,
-      email: user?.email
+      username: "Sacred Seeker",
+      email: "seeker@sacred-shifter.app"
     },
     overview: {
       journal_entries_count: journalEntries?.entries.length || 0,
@@ -119,7 +115,7 @@ export default function HomePage() {
               Your consciousness transformation toolkit
             </p>
             <p className="text-sm text-purple-300 mt-2">
-              Signed in as: {user?.email}
+              Welcome, Sacred Seeker
             </p>
           </div>
         </div>

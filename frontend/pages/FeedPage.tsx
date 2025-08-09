@@ -9,7 +9,7 @@ import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from 
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
 import { useToast } from '@/components/ui/use-toast';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
 
 export default function FeedPage() {
@@ -17,7 +17,6 @@ export default function FeedPage() {
   const [newPostCategory, setNewPostCategory] = useState('insight');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const [filterCategory, setFilterCategory] = useState('all');
-  const backend = useBackend();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

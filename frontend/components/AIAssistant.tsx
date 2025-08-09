@@ -11,7 +11,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { Switch } from '@/components/ui/switch';
 import { Label } from '@/components/ui/label';
 import { useToast } from '@/components/ui/use-toast';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import type { AIMessage, AIConversation } from '~backend/ai/assistant';
 
 interface AIAssistantProps {
@@ -27,7 +27,6 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
-  const backend = useBackend();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

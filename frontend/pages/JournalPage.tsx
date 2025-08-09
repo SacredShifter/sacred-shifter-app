@@ -7,7 +7,7 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
 import type { JournalEntry } from '~backend/journal/entries';
 
@@ -18,7 +18,6 @@ export default function JournalPage() {
   const [editingEntry, setEditingEntry] = useState<JournalEntry | null>(null);
   const [editTitle, setEditTitle] = useState('');
   const [editContent, setEditContent] = useState('');
-  const backend = useBackend();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

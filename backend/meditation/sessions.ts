@@ -1,5 +1,4 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { meditationDB } from "./db";
 
 export interface MeditationSession {
@@ -31,14 +30,14 @@ interface CurrentSessionResponse {
 
 // Starts a new meditation session.
 export const startSession = api<StartSessionRequest, MeditationSession>(
-  { auth: true, expose: true, method: "POST", path: "/meditation/sessions/start" },
+  { expose: true, method: "POST", path: "/meditation/sessions/start" },
   async (req) => {
-    const auth = getAuthData()!;
     const { soundscape } = req;
+    const userId = "default-user"; // Use default user since no auth
 
     const session = await meditationDB.queryRow<MeditationSession>`
       INSERT INTO meditation_sessions (user_id, soundscape)
-      VALUES (${auth.userID}, ${soundscape})
+      VALUES (${userId}, ${soundscape})
       RETURNING id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
     `;
 
@@ -52,10 +51,10 @@ export const startSession = api<StartSessionRequest, MeditationSession>(
 
 // Ends a meditation session and marks it as completed.
 export const endSession = api<EndSessionRequest, MeditationSession>(
-  { auth: true, expose: true, method: "PUT", path: "/meditation/sessions/:id/end" },
+  { expose: true, method: "PUT", path: "/meditation/sessions/:id/end" },
   async (req) => {
-    const auth = getAuthData()!;
     const { id } = req;
+    const userId = "default-user"; // Use default user since no auth
 
     const session = await meditationDB.queryRow<MeditationSession>`
       UPDATE meditation_sessions
@@ -63,7 +62,7 @@ export const endSession = api<EndSessionRequest, MeditationSession>(
         ended_at = NOW(),
         completed = TRUE,
         duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
-      WHERE id = ${id} AND user_id = ${auth.userID}
+      WHERE id = ${id} AND user_id = ${userId}
       RETURNING id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
     `;
 
@@ -77,14 +76,14 @@ export const endSession = api<EndSessionRequest, MeditationSession>(
 
 // Retrieves all meditation sessions for the current user.
 export const listSessions = api<void, ListSessionsResponse>(
-  { auth: true, expose: true, method: "GET", path: "/meditation/sessions" },
+  { expose: true, method: "GET", path: "/meditation/sessions" },
   async () => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     const sessions = await meditationDB.queryAll<MeditationSession>`
       SELECT id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID}
+      WHERE user_id = ${userId}
       ORDER BY started_at DESC
     `;
 
@@ -94,14 +93,14 @@ export const listSessions = api<void, ListSessionsResponse>(
 
 // Gets the current active session for the user.
 export const getCurrentSession = api<void, CurrentSessionResponse>(
-  { auth: true, expose: true, method: "GET", path: "/meditation/sessions/current" },
+  { expose: true, method: "GET", path: "/meditation/sessions/current" },
   async () => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     const session = await meditationDB.queryRow<MeditationSession>`
       SELECT id, user_id, soundscape, duration_seconds, completed, started_at, ended_at, created_at
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} AND completed = FALSE
+      WHERE user_id = ${userId} AND completed = FALSE
       ORDER BY started_at DESC
       LIMIT 1
     `;

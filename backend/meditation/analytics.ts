@@ -1,5 +1,4 @@
 import { api } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { meditationDB } from "./db";
 
 export interface MeditationAnalytics {
@@ -26,9 +25,9 @@ export interface MeditationAnalytics {
 
 // Retrieves meditation analytics for the current user.
 export const getAnalytics = api<void, MeditationAnalytics>(
-  { auth: true, expose: true, method: "GET", path: "/meditation/analytics" },
+  { expose: true, method: "GET", path: "/meditation/analytics" },
   async () => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     // Get basic stats
     const basicStats = await meditationDB.queryRow<{
@@ -43,7 +42,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
         COALESCE(SUM(CASE WHEN completed = TRUE THEN duration_seconds ELSE 0 END), 0) as total_meditation_time,
         COALESCE(AVG(CASE WHEN completed = TRUE THEN duration_seconds END), 0) as average_session_duration
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID}
+      WHERE user_id = ${userId}
     `;
 
     // Get favorite soundscape
@@ -52,7 +51,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
     }>`
       SELECT soundscape
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} AND completed = TRUE
+      WHERE user_id = ${userId} AND completed = TRUE
       GROUP BY soundscape
       ORDER BY COUNT(*) DESC
       LIMIT 1
@@ -67,7 +66,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
         COUNT(CASE WHEN started_at >= DATE_TRUNC('week', NOW()) THEN 1 END) as sessions_this_week,
         COUNT(CASE WHEN started_at >= DATE_TRUNC('month', NOW()) THEN 1 END) as sessions_this_month
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} AND completed = TRUE
+      WHERE user_id = ${userId} AND completed = TRUE
     `;
 
     // Get soundscape breakdown
@@ -81,7 +80,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
         COUNT(*) as count,
         COALESCE(SUM(duration_seconds), 0) as total_duration
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} AND completed = TRUE
+      WHERE user_id = ${userId} AND completed = TRUE
       GROUP BY soundscape
       ORDER BY count DESC
     `;
@@ -97,7 +96,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
         COUNT(*) as session_count,
         COALESCE(SUM(duration_seconds), 0) as total_duration
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} 
+      WHERE user_id = ${userId} 
         AND completed = TRUE
         AND started_at >= NOW() - INTERVAL '8 weeks'
       GROUP BY DATE_TRUNC('week', started_at)
@@ -110,7 +109,7 @@ export const getAnalytics = api<void, MeditationAnalytics>(
     }>`
       SELECT DISTINCT DATE(started_at) as session_date
       FROM meditation_sessions
-      WHERE user_id = ${auth.userID} AND completed = TRUE
+      WHERE user_id = ${userId} AND completed = TRUE
       ORDER BY session_date DESC
     `;
 

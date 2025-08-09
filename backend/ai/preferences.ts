@@ -1,5 +1,4 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { aiDB } from "./db";
 
 export interface AIUserPreferences {
@@ -24,9 +23,9 @@ interface UpdatePreferencesRequest {
 
 // Retrieves the current user's AI assistant preferences.
 export const getPreferences = api<void, AIUserPreferences>(
-  { auth: true, expose: true, method: "GET", path: "/ai/preferences" },
+  { expose: true, method: "GET", path: "/ai/preferences" },
   async () => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     let preferences = await aiDB.queryRow<AIUserPreferences>`
       SELECT user_id, assistant_personality, preferred_response_style, 
@@ -34,14 +33,14 @@ export const getPreferences = api<void, AIUserPreferences>(
              meditation_guidance_enabled, admin_mode_enabled,
              created_at, updated_at
       FROM ai_user_preferences
-      WHERE user_id = ${auth.userID}
+      WHERE user_id = ${userId}
     `;
 
     if (!preferences) {
       // Create default preferences
       preferences = await aiDB.queryRow<AIUserPreferences>`
         INSERT INTO ai_user_preferences (user_id)
-        VALUES (${auth.userID})
+        VALUES (${userId})
         RETURNING user_id, assistant_personality, preferred_response_style, 
                   dream_analysis_enabled, journal_assistance_enabled, 
                   meditation_guidance_enabled, admin_mode_enabled,
@@ -59,14 +58,14 @@ export const getPreferences = api<void, AIUserPreferences>(
 
 // Updates the current user's AI assistant preferences.
 export const updatePreferences = api<UpdatePreferencesRequest, AIUserPreferences>(
-  { auth: true, expose: true, method: "PUT", path: "/ai/preferences" },
+  { expose: true, method: "PUT", path: "/ai/preferences" },
   async (req) => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     // Ensure preferences exist
     await aiDB.exec`
       INSERT INTO ai_user_preferences (user_id)
-      VALUES (${auth.userID})
+      VALUES (${userId})
       ON CONFLICT (user_id) DO NOTHING
     `;
 
@@ -103,7 +102,7 @@ export const updatePreferences = api<UpdatePreferencesRequest, AIUserPreferences
     }
 
     updateFields.push(`updated_at = NOW()`);
-    updateValues.push(auth.userID);
+    updateValues.push(userId);
 
     const query = `
       UPDATE ai_user_preferences
@@ -127,17 +126,13 @@ export const updatePreferences = api<UpdatePreferencesRequest, AIUserPreferences
 
 // Enables admin mode for the current user (restricted endpoint).
 export const enableAdminMode = api<void, void>(
-  { auth: true, expose: true, method: "POST", path: "/ai/admin/enable" },
+  { expose: true, method: "POST", path: "/ai/admin/enable" },
   async () => {
-    const auth = getAuthData()!;
-
-    // In a real application, you would check if the user has admin privileges
-    // For now, we'll allow any authenticated user to enable admin mode
-    // You should implement proper admin role checking here
+    const userId = "default-user"; // Use default user since no auth
 
     await aiDB.exec`
       INSERT INTO ai_user_preferences (user_id, admin_mode_enabled)
-      VALUES (${auth.userID}, TRUE)
+      VALUES (${userId}, TRUE)
       ON CONFLICT (user_id) 
       DO UPDATE SET admin_mode_enabled = TRUE, updated_at = NOW()
     `;

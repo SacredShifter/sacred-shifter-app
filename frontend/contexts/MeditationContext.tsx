@@ -1,6 +1,6 @@
 import { createContext, useContext, useState, useEffect, ReactNode } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { useBackend } from './AuthContext';
+import backend from '~backend/client';
 import type { MeditationSession } from '~backend/meditation/sessions';
 
 interface MeditationContextType {
@@ -35,7 +35,6 @@ export function MeditationProvider({ children }: MeditationProviderProps) {
   const [currentSoundscape, setCurrentSoundscape] = useState('forest');
   const [volume, setVolume] = useState(0.5);
   const [sessionDuration, setSessionDuration] = useState(0);
-  const backend = useBackend();
   const queryClient = useQueryClient();
 
   // Get current active session

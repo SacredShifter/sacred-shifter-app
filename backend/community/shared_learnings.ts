@@ -1,9 +1,5 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { communityDB } from "./db";
-import { SQLDatabase } from "encore.dev/storage/sqldb";
-
-const usersDB = SQLDatabase.named("sacred_shifter");
 
 export interface SharedLearning {
   id: string;
@@ -26,10 +22,11 @@ interface ListSharedLearningsResponse {
 
 // Creates a new shared learning post.
 export const createSharedLearning = api<CreateSharedLearningRequest, SharedLearning>(
-  { auth: true, expose: true, method: "POST", path: "/community/shared-learnings" },
+  { expose: true, method: "POST", path: "/community/shared-learnings" },
   async (req) => {
-    const auth = getAuthData()!;
     const { title, content } = req;
+    const userId = "default-user"; // Use default user since no auth
+    const username = "Sacred Seeker"; // Use default username since no auth
 
     const learning = await communityDB.queryRow<{
       id: string;
@@ -40,7 +37,7 @@ export const createSharedLearning = api<CreateSharedLearningRequest, SharedLearn
       updated_at: Date;
     }>`
       INSERT INTO shared_learnings (user_id, title, content)
-      VALUES (${auth.userID}, ${title}, ${content})
+      VALUES (${userId}, ${title}, ${content})
       RETURNING id, user_id, title, content, created_at, updated_at
     `;
 
@@ -50,7 +47,7 @@ export const createSharedLearning = api<CreateSharedLearningRequest, SharedLearn
 
     return {
       ...learning,
-      username: auth.username,
+      username,
     };
   }
 );
@@ -72,26 +69,11 @@ export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
       ORDER BY created_at DESC
     `;
 
-    // Get usernames from the users database
-    const learningsWithUsernames: SharedLearning[] = [];
-    
-    for (const learning of learnings) {
-      try {
-        const user = await usersDB.queryRow<{ username: string }>`
-          SELECT username FROM users WHERE id = ${learning.user_id}
-        `;
-        
-        learningsWithUsernames.push({
-          ...learning,
-          username: user?.username || `User_${learning.user_id.substring(0, 8)}`
-        });
-      } catch (error) {
-        learningsWithUsernames.push({
-          ...learning,
-          username: `User_${learning.user_id.substring(0, 8)}`
-        });
-      }
-    }
+    // Add default username since no auth
+    const learningsWithUsernames: SharedLearning[] = learnings.map(learning => ({
+      ...learning,
+      username: "Sacred Seeker"
+    }));
 
     return { learnings: learningsWithUsernames };
   }

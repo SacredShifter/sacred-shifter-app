@@ -5,7 +5,7 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import { useMeditation } from '../contexts/MeditationContext';
 import AIAssistant from '../components/AIAssistant';
 
@@ -28,7 +28,6 @@ function formatTime(seconds: number): string {
 
 export default function MeditationPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
-  const backend = useBackend();
   const { currentSession, sessionDuration, isPlaying, startMeditationSession, endMeditationSession } = useMeditation();
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery({

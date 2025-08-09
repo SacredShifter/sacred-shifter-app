@@ -1,6 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings, LogOut } from 'lucide-react';
-import { useAuth } from '../contexts/AuthContext';
+import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 
 const coreNavigation = [
@@ -32,7 +31,6 @@ const account = [
 
 export default function Sidebar() {
   const location = useLocation();
-  const { user, logout } = useAuth();
 
   const renderNavSection = (title: string, items: typeof coreNavigation) => (
     <div className="mb-6">
@@ -86,19 +84,10 @@ export default function Sidebar() {
         <div className="p-4 border-t border-purple-200">
           <div className="flex items-center justify-between mb-4">
             <div className="text-sm">
-              <p className="font-medium text-gray-900">{user?.username}</p>
-              <p className="text-gray-500 text-xs">{user?.email}</p>
+              <p className="font-medium text-gray-900">Sacred Seeker</p>
+              <p className="text-gray-500 text-xs">Welcome to Sacred Shifter</p>
             </div>
           </div>
-          <Button
-            onClick={logout}
-            variant="outline"
-            size="sm"
-            className="w-full"
-          >
-            <LogOut className="w-4 h-4 mr-2" />
-            Sign Out
-          </Button>
         </div>
       </div>
     </div>

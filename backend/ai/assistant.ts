@@ -1,5 +1,4 @@
 import { api, APIError } from "encore.dev/api";
-import { getAuthData } from "~encore/auth";
 import { aiDB } from "./db";
 import { secret } from "encore.dev/config";
 
@@ -46,10 +45,11 @@ interface GetConversationParams {
 
 // Sends a message to the AI assistant and gets a response.
 export const chat = api<ChatRequest, ChatResponse>(
-  { auth: true, expose: true, method: "POST", path: "/ai/chat" },
+  { expose: true, method: "POST", path: "/ai/chat" },
   async (req) => {
-    const auth = getAuthData()!;
     const { message, conversation_id, context_type = 'general', context_data = {} } = req;
+    const userId = "default-user"; // Use default user since no auth
+    const username = "Sacred Seeker"; // Use default username since no auth
 
     let conversation: AIConversation;
 
@@ -58,7 +58,7 @@ export const chat = api<ChatRequest, ChatResponse>(
       const existingConversation = await aiDB.queryRow<AIConversation>`
         SELECT id, user_id, title, context_type, created_at, updated_at
         FROM ai_conversations
-        WHERE id = ${conversation_id} AND user_id = ${auth.userID}
+        WHERE id = ${conversation_id} AND user_id = ${userId}
       `;
 
       if (!existingConversation) {
@@ -72,7 +72,7 @@ export const chat = api<ChatRequest, ChatResponse>(
       
       const newConversation = await aiDB.queryRow<AIConversation>`
         INSERT INTO ai_conversations (user_id, title, context_type)
-        VALUES (${auth.userID}, ${title}, ${context_type})
+        VALUES (${userId}, ${title}, ${context_type})
         RETURNING id, user_id, title, context_type, created_at, updated_at
       `;
 
@@ -91,7 +91,7 @@ export const chat = api<ChatRequest, ChatResponse>(
     }>`
       SELECT assistant_personality, preferred_response_style, admin_mode_enabled
       FROM ai_user_preferences
-      WHERE user_id = ${auth.userID}
+      WHERE user_id = ${userId}
     `;
 
     // Get conversation history
@@ -115,7 +115,7 @@ export const chat = api<ChatRequest, ChatResponse>(
       contextType: context_type,
       contextData: context_data,
       userPreferences: userPrefs,
-      username: auth.username,
+      username: username,
       isAdmin: userPrefs?.admin_mode_enabled || false
     });
 
@@ -141,14 +141,14 @@ export const chat = api<ChatRequest, ChatResponse>(
 
 // Retrieves all conversations for the current user.
 export const listConversations = api<void, ListConversationsResponse>(
-  { auth: true, expose: true, method: "GET", path: "/ai/conversations" },
+  { expose: true, method: "GET", path: "/ai/conversations" },
   async () => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     const conversations = await aiDB.queryAll<AIConversation>`
       SELECT id, user_id, title, context_type, created_at, updated_at
       FROM ai_conversations
-      WHERE user_id = ${auth.userID}
+      WHERE user_id = ${userId}
       ORDER BY updated_at DESC
     `;
 
@@ -158,14 +158,14 @@ export const listConversations = api<void, ListConversationsResponse>(
 
 // Retrieves a specific conversation with its messages.
 export const getConversation = api<GetConversationParams, AIConversation>(
-  { auth: true, expose: true, method: "GET", path: "/ai/conversations/:id" },
+  { expose: true, method: "GET", path: "/ai/conversations/:id" },
   async ({ id }) => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     const conversation = await aiDB.queryRow<AIConversation>`
       SELECT id, user_id, title, context_type, created_at, updated_at
       FROM ai_conversations
-      WHERE id = ${id} AND user_id = ${auth.userID}
+      WHERE id = ${id} AND user_id = ${userId}
     `;
 
     if (!conversation) {
@@ -188,13 +188,13 @@ export const getConversation = api<GetConversationParams, AIConversation>(
 
 // Deletes a conversation and all its messages.
 export const deleteConversation = api<GetConversationParams, void>(
-  { auth: true, expose: true, method: "DELETE", path: "/ai/conversations/:id" },
+  { expose: true, method: "DELETE", path: "/ai/conversations/:id" },
   async ({ id }) => {
-    const auth = getAuthData()!;
+    const userId = "default-user"; // Use default user since no auth
 
     await aiDB.exec`
       DELETE FROM ai_conversations
-      WHERE id = ${id} AND user_id = ${auth.userID}
+      WHERE id = ${id} AND user_id = ${userId}
     `;
   }
 );

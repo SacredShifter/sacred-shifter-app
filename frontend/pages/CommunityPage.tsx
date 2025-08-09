@@ -7,14 +7,13 @@ import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
 
 export default function CommunityPage() {
   const [newLearningTitle, setNewLearningTitle] = useState('');
   const [newLearningContent, setNewLearningContent] = useState('');
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
-  const backend = useBackend();
   const { toast } = useToast();
   const queryClient = useQueryClient();
 

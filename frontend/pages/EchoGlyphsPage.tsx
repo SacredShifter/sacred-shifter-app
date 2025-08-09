@@ -5,13 +5,12 @@ import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/com
 import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
-import { useBackend } from '../contexts/AuthContext';
+import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
 import type { EchoGlyph } from '~backend/echo_glyphs/list';
 
 export default function EchoGlyphsPage() {
   const [selectedGlyph, setSelectedGlyph] = useState<EchoGlyph | null>(null);
-  const backend = useBackend();
 
   const { data: echoGlyphs, isLoading } = useQuery({
     queryKey: ['echo-glyphs'],
