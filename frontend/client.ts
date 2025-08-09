@@ -34,10 +34,11 @@ const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
  */
 export class Client {
     public readonly ai: ai.ServiceClient
+    public readonly codex: codex.ServiceClient
     public readonly community: community.ServiceClient
-    public readonly echo_glyphs: echo_glyphs.ServiceClient
     public readonly journal: journal.ServiceClient
     public readonly meditation: meditation.ServiceClient
+    public readonly system: system.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
 
@@ -53,10 +54,11 @@ export class Client {
         this.options = options ?? {}
         const base = new BaseClient(this.target, this.options)
         this.ai = new ai.ServiceClient(base)
+        this.codex = new codex.ServiceClient(base)
         this.community = new community.ServiceClient(base)
-        this.echo_glyphs = new echo_glyphs.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
         this.meditation = new meditation.ServiceClient(base)
+        this.system = new system.ServiceClient(base)
     }
 
     /**
@@ -181,6 +183,185 @@ export namespace ai {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
+import { getAnalytics as api_codex_analytics_getAnalytics } from "~backend/codex/analytics";
+import {
+    createEntry as api_codex_entries_createEntry,
+    deleteEntry as api_codex_entries_deleteEntry,
+    getEntry as api_codex_entries_getEntry,
+    listEntries as api_codex_entries_listEntries,
+    updateEntry as api_codex_entries_updateEntry
+} from "~backend/codex/entries";
+import { health as api_codex_health_health } from "~backend/codex/health";
+import {
+    findSimilarEntries as api_codex_sharing_findSimilarEntries,
+    reactToEntry as api_codex_sharing_reactToEntry,
+    shareEntry as api_codex_sharing_shareEntry,
+    unshareEntry as api_codex_sharing_unshareEntry
+} from "~backend/codex/sharing";
+
+export namespace codex {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.createEntry = this.createEntry.bind(this)
+            this.deleteEntry = this.deleteEntry.bind(this)
+            this.findSimilarEntries = this.findSimilarEntries.bind(this)
+            this.getAnalytics = this.getAnalytics.bind(this)
+            this.getEntry = this.getEntry.bind(this)
+            this.health = this.health.bind(this)
+            this.listEntries = this.listEntries.bind(this)
+            this.reactToEntry = this.reactToEntry.bind(this)
+            this.shareEntry = this.shareEntry.bind(this)
+            this.unshareEntry = this.unshareEntry.bind(this)
+            this.updateEntry = this.updateEntry.bind(this)
+        }
+
+        /**
+         * Creates a new codex entry.
+         */
+        public async createEntry(params: RequestType<typeof api_codex_entries_createEntry>): Promise<ResponseType<typeof api_codex_entries_createEntry>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/entries`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_entries_createEntry>
+        }
+
+        /**
+         * Deletes a codex entry.
+         */
+        public async deleteEntry(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Finds similar entries to a given entry.
+         */
+        public async findSimilarEntries(params: RequestType<typeof api_codex_sharing_findSimilarEntries>): Promise<ResponseType<typeof api_codex_sharing_findSimilarEntries>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit: params.limit === undefined ? undefined : String(params.limit),
+                mode:  params.mode === undefined ? undefined : String(params.mode),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.entry_id)}/similar`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_sharing_findSimilarEntries>
+        }
+
+        /**
+         * Retrieves codex analytics for the current user.
+         */
+        public async getAnalytics(): Promise<ResponseType<typeof api_codex_analytics_getAnalytics>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/analytics`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_analytics_getAnalytics>
+        }
+
+        /**
+         * Retrieves a specific codex entry.
+         */
+        public async getEntry(params: { id: string }): Promise<ResponseType<typeof api_codex_entries_getEntry>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_entries_getEntry>
+        }
+
+        /**
+         * Health check endpoint for the codex module.
+         */
+        public async health(): Promise<ResponseType<typeof api_codex_health_health>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/health`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_health_health>
+        }
+
+        /**
+         * Retrieves all codex entries for the current user.
+         */
+        public async listEntries(params: RequestType<typeof api_codex_entries_listEntries>): Promise<ResponseType<typeof api_codex_entries_listEntries>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "date_from":     params["date_from"] === undefined ? undefined : params["date_from"].toISOString(),
+                "date_to":       params["date_to"] === undefined ? undefined : params["date_to"].toISOString(),
+                "entry_type":    params["entry_type"],
+                limit:           params.limit === undefined ? undefined : String(params.limit),
+                mode:            params.mode === undefined ? undefined : String(params.mode),
+                offset:          params.offset === undefined ? undefined : String(params.offset),
+                "resonance_max": params["resonance_max"] === undefined ? undefined : String(params["resonance_max"]),
+                "resonance_min": params["resonance_min"] === undefined ? undefined : String(params["resonance_min"]),
+                search:          params.search,
+                tags:            params.tags?.map((v) => v),
+                "verified_only": params["verified_only"] === undefined ? undefined : String(params["verified_only"]),
+                visibility:      params.visibility === undefined ? undefined : String(params.visibility),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/entries`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_entries_listEntries>
+        }
+
+        /**
+         * Reacts to a codex entry.
+         */
+        public async reactToEntry(params: RequestType<typeof api_codex_sharing_reactToEntry>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                kind: params.kind,
+            }
+
+            await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.entry_id)}/react`, {method: "POST", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Shares a codex entry with another user.
+         */
+        public async shareEntry(params: RequestType<typeof api_codex_sharing_shareEntry>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "can_edit": params["can_edit"],
+                "user_id":  params["user_id"],
+            }
+
+            await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.entry_id)}/share`, {method: "POST", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Unshares a codex entry from a user.
+         */
+        public async unshareEntry(params: { entry_id: string, user_id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.entry_id)}/share/${encodeURIComponent(params.user_id)}`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Updates an existing codex entry.
+         */
+        public async updateEntry(params: RequestType<typeof api_codex_entries_updateEntry>): Promise<ResponseType<typeof api_codex_entries_updateEntry>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content:               params.content,
+                context:               params.context,
+                "entry_type":          params["entry_type"],
+                "occurred_at":         params["occurred_at"],
+                "resonance_channels":  params["resonance_channels"],
+                "resonance_rating":    params["resonance_rating"],
+                "resonance_signature": params["resonance_signature"],
+                tags:                  params.tags,
+                title:                 params.title,
+                visibility:            params.visibility,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/codex/entries/${encodeURIComponent(params.id)}`, {method: "PUT", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_codex_entries_updateEntry>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
 import {
     listMessages as api_community_messages_listMessages,
     markMessageRead as api_community_messages_markMessageRead,
@@ -253,49 +434,15 @@ export namespace community {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
-import { get as api_echo_glyphs_get_get } from "~backend/echo_glyphs/get";
-import { list as api_echo_glyphs_list_list } from "~backend/echo_glyphs/list";
-
-export namespace echo_glyphs {
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.get = this.get.bind(this)
-            this.list = this.list.bind(this)
-        }
-
-        /**
-         * Retrieves a specific echo glyph by ID.
-         */
-        public async get(params: { id: string }): Promise<ResponseType<typeof api_echo_glyphs_get_get>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/echo-glyphs/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_echo_glyphs_get_get>
-        }
-
-        /**
-         * Retrieves all echo glyphs from the resonance map.
-         */
-        public async list(): Promise<ResponseType<typeof api_echo_glyphs_list_list>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/echo-glyphs`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_echo_glyphs_list_list>
-        }
-    }
-}
-
-/**
- * Import the endpoint handlers to derive the types for the client.
- */
+import { getAnalytics as api_journal_analytics_getAnalytics } from "~backend/journal/analytics";
 import {
     createEntry as api_journal_entries_createEntry,
     deleteEntry as api_journal_entries_deleteEntry,
+    getEntry as api_journal_entries_getEntry,
     listEntries as api_journal_entries_listEntries,
     updateEntry as api_journal_entries_updateEntry
 } from "~backend/journal/entries";
+import { health as api_journal_health_health } from "~backend/journal/health";
 
 export namespace journal {
 
@@ -306,6 +453,9 @@ export namespace journal {
             this.baseClient = baseClient
             this.createEntry = this.createEntry.bind(this)
             this.deleteEntry = this.deleteEntry.bind(this)
+            this.getAnalytics = this.getAnalytics.bind(this)
+            this.getEntry = this.getEntry.bind(this)
+            this.health = this.health.bind(this)
             this.listEntries = this.listEntries.bind(this)
             this.updateEntry = this.updateEntry.bind(this)
         }
@@ -327,11 +477,48 @@ export namespace journal {
         }
 
         /**
+         * Retrieves journal analytics for the current user.
+         */
+        public async getAnalytics(): Promise<ResponseType<typeof api_journal_analytics_getAnalytics>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/journal/analytics`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_journal_analytics_getAnalytics>
+        }
+
+        /**
+         * Retrieves a specific journal entry.
+         */
+        public async getEntry(params: { id: string }): Promise<ResponseType<typeof api_journal_entries_getEntry>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/journal/entries/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_journal_entries_getEntry>
+        }
+
+        /**
+         * Health check endpoint for the journal module.
+         */
+        public async health(): Promise<ResponseType<typeof api_journal_health_health>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/journal/health`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_journal_health_health>
+        }
+
+        /**
          * Retrieves all journal entries for the current user.
          */
-        public async listEntries(): Promise<ResponseType<typeof api_journal_entries_listEntries>> {
+        public async listEntries(params: RequestType<typeof api_journal_entries_listEntries>): Promise<ResponseType<typeof api_journal_entries_listEntries>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "date_from": params["date_from"] === undefined ? undefined : params["date_from"].toISOString(),
+                "date_to":   params["date_to"] === undefined ? undefined : params["date_to"].toISOString(),
+                limit:       params.limit === undefined ? undefined : String(params.limit),
+                offset:      params.offset === undefined ? undefined : String(params.offset),
+                search:      params.search,
+                tags:        params.tags?.map((v) => v),
+            })
+
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/journal/entries`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/journal/entries`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_journal_entries_listEntries>
         }
 
@@ -341,8 +528,12 @@ export namespace journal {
         public async updateEntry(params: RequestType<typeof api_journal_entries_updateEntry>): Promise<ResponseType<typeof api_journal_entries_updateEntry>> {
             // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
             const body: Record<string, any> = {
-                content: params.content,
-                title:   params.title,
+                content:  params.content,
+                location: params.location,
+                mood:     params.mood,
+                tags:     params.tags,
+                title:    params.title,
+                weather:  params.weather,
             }
 
             // Now make the actual call to the API
@@ -356,6 +547,7 @@ export namespace journal {
  * Import the endpoint handlers to derive the types for the client.
  */
 import { getAnalytics as api_meditation_analytics_getAnalytics } from "~backend/meditation/analytics";
+import { health as api_meditation_health_health } from "~backend/meditation/health";
 import {
     endSession as api_meditation_sessions_endSession,
     getCurrentSession as api_meditation_sessions_getCurrentSession,
@@ -373,6 +565,7 @@ export namespace meditation {
             this.endSession = this.endSession.bind(this)
             this.getAnalytics = this.getAnalytics.bind(this)
             this.getCurrentSession = this.getCurrentSession.bind(this)
+            this.health = this.health.bind(this)
             this.listSessions = this.listSessions.bind(this)
             this.startSession = this.startSession.bind(this)
         }
@@ -380,9 +573,15 @@ export namespace meditation {
         /**
          * Ends a meditation session and marks it as completed.
          */
-        public async endSession(params: { id: string }): Promise<ResponseType<typeof api_meditation_sessions_endSession>> {
+        public async endSession(params: RequestType<typeof api_meditation_sessions_endSession>): Promise<ResponseType<typeof api_meditation_sessions_endSession>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                "mood_after": params["mood_after"],
+                notes:        params.notes,
+            }
+
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/${encodeURIComponent(params.id)}/end`, {method: "PUT", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/${encodeURIComponent(params.id)}/end`, {method: "PUT", body: JSON.stringify(body)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_endSession>
         }
 
@@ -405,11 +604,30 @@ export namespace meditation {
         }
 
         /**
-         * Retrieves all meditation sessions for the current user.
+         * Health check endpoint for the meditation module.
          */
-        public async listSessions(): Promise<ResponseType<typeof api_meditation_sessions_listSessions>> {
+        public async health(): Promise<ResponseType<typeof api_meditation_health_health>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions`, {method: "GET", body: undefined})
+            const resp = await this.baseClient.callTypedAPI(`/meditation/health`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_health_health>
+        }
+
+        /**
+         * Retrieves meditation sessions for the current user.
+         */
+        public async listSessions(params: RequestType<typeof api_meditation_sessions_listSessions>): Promise<ResponseType<typeof api_meditation_sessions_listSessions>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                completed:   params.completed === undefined ? undefined : String(params.completed),
+                "date_from": params["date_from"] === undefined ? undefined : params["date_from"].toISOString(),
+                "date_to":   params["date_to"] === undefined ? undefined : params["date_to"].toISOString(),
+                limit:       params.limit === undefined ? undefined : String(params.limit),
+                offset:      params.offset === undefined ? undefined : String(params.offset),
+                soundscape:  params.soundscape,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/meditation/sessions`, {query, method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_listSessions>
         }
 
@@ -420,6 +638,32 @@ export namespace meditation {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/start`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_startSession>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import { systemHealth as api_system_health_systemHealth } from "~backend/system/health";
+
+export namespace system {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.systemHealth = this.systemHealth.bind(this)
+        }
+
+        /**
+         * System-wide health check that aggregates all module health statuses.
+         */
+        public async systemHealth(): Promise<ResponseType<typeof api_system_health_systemHealth>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/system/health`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_system_health_systemHealth>
         }
     }
 }

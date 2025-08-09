@@ -31,20 +31,20 @@ const modules = [
     gradient: 'from-green-500 to-emerald-600'
   },
   {
-    title: 'Resonance Register',
-    description: 'Document meaningful synchronicities and spiritual experiences',
+    title: 'Resonant Codex',
+    description: 'Unified space for insights, synchronicities, and measurable resonance',
     icon: Database,
-    href: '/resonance-register',
+    href: '/codex',
     action: 'Anchor the Synchronicities',
-    gradient: 'from-orange-500 to-red-600'
+    gradient: 'from-purple-600 to-pink-600'
   },
   {
-    title: 'Personal Codex',
-    description: 'Your private collection of wisdom, insights, and revelations',
+    title: 'Meditation Center',
+    description: 'Track your meditation journey and deepen your practice',
     icon: Brain,
-    href: '/personal-codex',
-    action: 'Encode Your Revelations',
-    gradient: 'from-purple-600 to-pink-600'
+    href: '/meditation',
+    action: 'Expand Your Awareness',
+    gradient: 'from-indigo-500 to-purple-600'
   },
   {
     title: 'YouTube Library',
@@ -83,6 +83,11 @@ export default function HomePage() {
     queryFn: () => backend.meditation.getAnalytics(),
   });
 
+  const { data: codexEntries } = useQuery({
+    queryKey: ['codex-entries'],
+    queryFn: () => backend.codex.listEntries(),
+  });
+
   const homeContextData = {
     user: {
       username: "Sacred Seeker",
@@ -90,10 +95,12 @@ export default function HomePage() {
     },
     overview: {
       journal_entries_count: journalEntries?.entries.length || 0,
-      meditation_sessions: meditationAnalytics?.completed_sessions || 0
+      meditation_sessions: meditationAnalytics?.completed_sessions || 0,
+      codex_entries_count: codexEntries?.entries.length || 0
     },
     recent_activity: {
-      recent_entries: journalEntries?.entries.slice(0, 3).map(e => e.title) || []
+      recent_entries: journalEntries?.entries.slice(0, 3).map(e => e.title) || [],
+      recent_codex: codexEntries?.entries.slice(0, 3).map(e => e.title) || []
     }
   };
 

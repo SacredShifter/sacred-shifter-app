@@ -7,8 +7,7 @@ import HomePage from './pages/HomePage';
 import FeedPage from './pages/FeedPage';
 import CirclesPage from './pages/CirclesPage';
 import JournalPage from './pages/JournalPage';
-import ResonanceRegisterPage from './pages/ResonanceRegisterPage';
-import EchoGlyphsPage from './pages/EchoGlyphsPage';
+import CodexPage from './pages/CodexPage';
 import MeditationPage from './pages/MeditationPage';
 import CommunityPage from './pages/CommunityPage';
 
@@ -24,8 +23,7 @@ export default function App() {
             <Route path="/feed" element={<Layout><FeedPage /></Layout>} />
             <Route path="/circles" element={<Layout><CirclesPage /></Layout>} />
             <Route path="/journal" element={<Layout><JournalPage /></Layout>} />
-            <Route path="/resonance-register" element={<Layout><ResonanceRegisterPage /></Layout>} />
-            <Route path="/echo-glyphs" element={<Layout><EchoGlyphsPage /></Layout>} />
+            <Route path="/codex" element={<Layout><CodexPage /></Layout>} />
             <Route path="/meditation" element={<Layout><MeditationPage /></Layout>} />
             <Route path="/community" element={<Layout><CommunityPage /></Layout>} />
           </Routes>

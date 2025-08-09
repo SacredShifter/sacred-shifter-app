@@ -36,11 +36,11 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
     features: ['chat', 'preferences', 'conversations'],
     dependencies: []
   },
-  echo_glyphs: {
-    name: 'echo_glyphs',
+  codex: {
+    name: 'codex',
     version: '1.0.0',
-    database_name: 'echo_glyphs',
-    features: ['glyphs', 'resonance', 'discovery'],
+    database_name: 'codex',
+    features: ['entries', 'analytics', 'sharing', 'resonance', 'ai_insights'],
     dependencies: ['ai']
   }
 };

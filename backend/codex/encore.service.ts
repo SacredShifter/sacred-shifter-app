@@ -1,3 +1,3 @@
 import { Service } from "encore.dev/service";
 
-export default new Service("echo_glyphs");
+export default new Service("codex");

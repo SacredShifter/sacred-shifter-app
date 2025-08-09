@@ -203,18 +203,64 @@ export const aiClient = {
   }
 };
 
-// Echo Glyphs module client
-export const echoGlyphsClient = {
-  async list() {
-    const client = new ModuleClient({ 
-      fallbackData: { glyphs: [] } 
-    });
-    return client.withRetry(() => backend.echo_glyphs.list(), 'echo_glyphs');
+// Codex module client
+export const codexClient = {
+  async createEntry(data: any) {
+    const client = new ModuleClient();
+    return client.withRetry(() => backend.codex.createEntry(data), 'codex');
   },
   
-  async get(id: string) {
+  async listEntries(params?: any) {
+    const client = new ModuleClient({ 
+      fallbackData: { entries: [], total: 0, has_more: false } 
+    });
+    return client.withRetry(() => backend.codex.listEntries(params), 'codex');
+  },
+  
+  async updateEntry(data: any) {
     const client = new ModuleClient();
-    return client.withRetry(() => backend.echo_glyphs.get({ id }), 'echo_glyphs');
+    return client.withRetry(() => backend.codex.updateEntry(data), 'codex');
+  },
+  
+  async deleteEntry(id: string) {
+    const client = new ModuleClient();
+    return client.withRetry(() => backend.codex.deleteEntry({ id }), 'codex');
+  },
+  
+  async getEntry(id: string) {
+    const client = new ModuleClient();
+    return client.withRetry(() => backend.codex.getEntry({ id }), 'codex');
+  },
+  
+  async getAnalytics() {
+    const client = new ModuleClient({
+      fallbackData: {
+        total_entries: 0,
+        codex_entries: 0,
+        register_entries: 0,
+        entries_this_week: 0,
+        entries_this_month: 0,
+        average_resonance: 0,
+        most_common_tags: [],
+        entry_types: [],
+        resonance_distribution: [],
+        verified_entries: 0,
+        shared_entries: 0
+      }
+    });
+    return client.withRetry(() => backend.codex.getAnalytics(), 'codex');
+  },
+  
+  async shareEntry(data: any) {
+    const client = new ModuleClient();
+    return client.withRetry(() => backend.codex.shareEntry(data), 'codex');
+  },
+  
+  async findSimilarEntries(entryId: string, params?: any) {
+    const client = new ModuleClient({
+      fallbackData: { similar_entries: [] }
+    });
+    return client.withRetry(() => backend.codex.findSimilarEntries({ entry_id: entryId, ...params }), 'codex');
   }
 };
 

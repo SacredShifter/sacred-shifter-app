@@ -12,8 +12,8 @@ const coreNavigation = [
 const sacredTools = [
   { name: 'Journal', href: '/journal', icon: BookOpen, module: 'journal' },
   { name: 'Circles', href: '/circles', icon: Users, module: 'community' },
-  { name: 'Resonance Register', href: '/resonance-register', icon: Database, module: 'echo_glyphs' },
-  { name: 'Personal Codex', href: '/personal-codex', icon: Brain, module: 'ai' },
+  { name: 'Codex', href: '/codex', icon: Database, module: 'codex' },
+  { name: 'Meditation', href: '/meditation', icon: Brain, module: 'meditation' },
 ];
 
 const media = [
@@ -103,7 +103,7 @@ export default function Sidebar() {
               <ModuleHealthIndicator moduleName="meditation" />
               <ModuleHealthIndicator moduleName="community" />
               <ModuleHealthIndicator moduleName="ai" />
-              <ModuleHealthIndicator moduleName="echo_glyphs" />
+              <ModuleHealthIndicator moduleName="codex" />
             </div>
           </div>
         </div>
