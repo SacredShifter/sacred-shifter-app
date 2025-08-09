@@ -33,7 +33,7 @@ const BROWSER = typeof globalThis === "object" && ("window" in globalThis);
  * Client is an API client for the  Encore application.
  */
 export class Client {
-    public readonly auth: auth.ServiceClient
+    public readonly ai: ai.ServiceClient
     public readonly community: community.ServiceClient
     public readonly echo_glyphs: echo_glyphs.ServiceClient
     public readonly journal: journal.ServiceClient
@@ -52,7 +52,7 @@ export class Client {
         this.target = target
         this.options = options ?? {}
         const base = new BaseClient(this.target, this.options)
-        this.auth = new auth.ServiceClient(base)
+        this.ai = new ai.ServiceClient(base)
         this.community = new community.ServiceClient(base)
         this.echo_glyphs = new echo_glyphs.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
@@ -73,11 +73,6 @@ export class Client {
 }
 
 /**
- * Import the auth handler to be able to derive the auth type
- */
-import type { auth as auth_auth } from "~backend/auth/auth";
-
-/**
  * ClientOptions allows you to override any default behaviour within the generated Encore client.
  */
 export interface ClientOptions {
@@ -90,59 +85,95 @@ export interface ClientOptions {
 
     /** Default RequestInit to be used for the client */
     requestInit?: Omit<RequestInit, "headers"> & { headers?: Record<string, string> }
-
-    /**
-     * Allows you to set the authentication data to be used for each
-     * request either by passing in a static object or by passing in
-     * a function which returns a new object for each request.
-     */
-    auth?: RequestType<typeof auth_auth> | AuthDataGenerator
 }
 
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
-import { login as api_auth_login_login } from "~backend/auth/login";
-import { me as api_auth_me_me } from "~backend/auth/me";
-import { register as api_auth_register_register } from "~backend/auth/register";
+import {
+    chat as api_ai_assistant_chat,
+    deleteConversation as api_ai_assistant_deleteConversation,
+    getConversation as api_ai_assistant_getConversation,
+    listConversations as api_ai_assistant_listConversations
+} from "~backend/ai/assistant";
+import {
+    getPreferences as api_ai_preferences_getPreferences,
+    updatePreferences as api_ai_preferences_updatePreferences
+} from "~backend/ai/preferences";
 
-export namespace auth {
+export namespace ai {
 
     export class ServiceClient {
         private baseClient: BaseClient
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
-            this.login = this.login.bind(this)
-            this.me = this.me.bind(this)
-            this.register = this.register.bind(this)
+            this.chat = this.chat.bind(this)
+            this.deleteConversation = this.deleteConversation.bind(this)
+            this.enableAdminMode = this.enableAdminMode.bind(this)
+            this.getConversation = this.getConversation.bind(this)
+            this.getPreferences = this.getPreferences.bind(this)
+            this.listConversations = this.listConversations.bind(this)
+            this.updatePreferences = this.updatePreferences.bind(this)
         }
 
         /**
-         * Logs in a user with email and password.
+         * Sends a message to the AI assistant and gets a response.
          */
-        public async login(params: RequestType<typeof api_auth_login_login>): Promise<ResponseType<typeof api_auth_login_login>> {
+        public async chat(params: RequestType<typeof api_ai_assistant_chat>): Promise<ResponseType<typeof api_ai_assistant_chat>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/auth/login`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_login_login>
+            const resp = await this.baseClient.callTypedAPI(`/ai/chat`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_assistant_chat>
         }
 
         /**
-         * Gets the current user's information.
+         * Deletes a conversation and all its messages.
          */
-        public async me(): Promise<ResponseType<typeof api_auth_me_me>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/auth/me`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_me_me>
+        public async deleteConversation(params: { id: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/ai/conversations/${encodeURIComponent(params.id)}`, {method: "DELETE", body: undefined})
         }
 
         /**
-         * Registers a new user account.
+         * Enables admin mode for the current user (restricted endpoint).
          */
-        public async register(params: RequestType<typeof api_auth_register_register>): Promise<ResponseType<typeof api_auth_register_register>> {
+        public async enableAdminMode(): Promise<void> {
+            await this.baseClient.callTypedAPI(`/ai/admin/enable`, {method: "POST", body: undefined})
+        }
+
+        /**
+         * Retrieves a specific conversation with its messages.
+         */
+        public async getConversation(params: { id: string }): Promise<ResponseType<typeof api_ai_assistant_getConversation>> {
             // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/auth/register`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_auth_register_register>
+            const resp = await this.baseClient.callTypedAPI(`/ai/conversations/${encodeURIComponent(params.id)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_assistant_getConversation>
+        }
+
+        /**
+         * Retrieves the current user's AI assistant preferences.
+         */
+        public async getPreferences(): Promise<ResponseType<typeof api_ai_preferences_getPreferences>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/ai/preferences`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_preferences_getPreferences>
+        }
+
+        /**
+         * Retrieves all conversations for the current user.
+         */
+        public async listConversations(): Promise<ResponseType<typeof api_ai_assistant_listConversations>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/ai/conversations`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_assistant_listConversations>
+        }
+
+        /**
+         * Updates the current user's AI assistant preferences.
+         */
+        public async updatePreferences(params: RequestType<typeof api_ai_preferences_updatePreferences>): Promise<ResponseType<typeof api_ai_preferences_updatePreferences>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/ai/preferences`, {method: "PUT", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_preferences_updatePreferences>
         }
     }
 }
@@ -647,11 +678,6 @@ type CallParameters = Omit<RequestInit, "headers"> & {
     query?: Record<string, string | string[]>
 }
 
-// AuthDataGenerator is a function that returns a new instance of the authentication data required by this API
-export type AuthDataGenerator = () =>
-  | RequestType<typeof auth_auth>
-  | Promise<RequestType<typeof auth_auth> | undefined>
-  | undefined;
 
 // A fetcher is the prototype for the inbuilt Fetch function
 export type Fetcher = typeof fetch;
@@ -663,7 +689,6 @@ class BaseClient {
     readonly fetcher: Fetcher
     readonly headers: Record<string, string>
     readonly requestInit: Omit<RequestInit, "headers"> & { headers?: Record<string, string> }
-    readonly authGenerator?: AuthDataGenerator
 
     constructor(baseURL: string, options: ClientOptions) {
         this.baseURL = baseURL
@@ -683,41 +708,9 @@ class BaseClient {
         } else {
             this.fetcher = boundFetch
         }
-
-        // Setup an authentication data generator using the auth data token option
-        if (options.auth !== undefined) {
-            const auth = options.auth
-            if (typeof auth === "function") {
-                this.authGenerator = auth
-            } else {
-                this.authGenerator = () => auth
-            }
-        }
     }
 
     async getAuthData(): Promise<CallParameters | undefined> {
-        let authData: RequestType<typeof auth_auth> | undefined;
-
-        // If authorization data generator is present, call it and add the returned data to the request
-        if (this.authGenerator) {
-            const mayBePromise = this.authGenerator();
-            if (mayBePromise instanceof Promise) {
-                authData = await mayBePromise;
-            } else {
-                authData = mayBePromise;
-            }
-        }
-
-        if (authData) {
-            const data: CallParameters = {};
-
-            data.headers = makeRecord<string, string>({
-                authorization: authData.authorization,
-            });
-
-            return data;
-        }
-
         return undefined;
     }
 

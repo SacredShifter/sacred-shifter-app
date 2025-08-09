@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useBackend } from '../contexts/AuthContext';
+import AIAssistant from '../components/AIAssistant';
 import type { JournalEntry } from '~backend/journal/entries';
 
 export default function JournalPage() {
@@ -141,6 +142,15 @@ export default function JournalPage() {
       </div>
     );
   }
+
+  const journalContextData = {
+    entries_count: journalEntries?.entries.length || 0,
+    recent_entries: journalEntries?.entries.slice(0, 3).map(entry => ({
+      title: entry.title,
+      content: entry.content.substring(0, 200) + '...',
+      date: entry.created_at
+    })) || []
+  };
 
   return (
     <div className="space-y-8">
@@ -291,6 +301,12 @@ export default function JournalPage() {
           </div>
         </DialogContent>
       </Dialog>
+
+      <AIAssistant 
+        contextType="journal" 
+        contextData={journalContextData}
+        className="bottom-4 left-4"
+      />
     </div>
   );
 }

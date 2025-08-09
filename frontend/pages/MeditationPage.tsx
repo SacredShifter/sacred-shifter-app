@@ -7,6 +7,7 @@ import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
 import { useBackend } from '../contexts/AuthContext';
 import { useMeditation } from '../contexts/MeditationContext';
+import AIAssistant from '../components/AIAssistant';
 
 function formatDuration(seconds: number): string {
   const hours = Math.floor(seconds / 3600);
@@ -64,6 +65,26 @@ export default function MeditationPage() {
     { id: 'rain', name: 'Rain', color: 'bg-gray-500' },
     { id: 'tibetan', name: 'Tibetan', color: 'bg-orange-500' },
   ];
+
+  const meditationContextData = {
+    current_session: hasActiveSession ? {
+      soundscape: currentSession.soundscape,
+      duration: sessionDuration,
+      is_active: true
+    } : null,
+    analytics: {
+      total_sessions: analytics?.completed_sessions || 0,
+      total_time: analytics?.total_meditation_time || 0,
+      current_streak: analytics?.current_streak || 0,
+      favorite_soundscape: analytics?.favorite_soundscape
+    },
+    recent_sessions: sessions?.sessions.slice(0, 3).map(session => ({
+      soundscape: session.soundscape,
+      duration: session.duration_seconds,
+      completed: session.completed,
+      date: session.started_at
+    })) || []
+  };
 
   return (
     <div className="space-y-8">
@@ -291,6 +312,12 @@ export default function MeditationPage() {
           </CardContent>
         </Card>
       )}
+
+      <AIAssistant 
+        contextType="meditation" 
+        contextData={meditationContextData}
+        className="bottom-4 left-4"
+      />
     </div>
   );
 }

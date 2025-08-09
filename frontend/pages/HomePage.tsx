@@ -3,6 +3,7 @@ import { Sparkles, Users, BookOpen, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { useBackend } from '../contexts/AuthContext';
 import { useAuth } from '../contexts/AuthContext';
+import AIAssistant from '../components/AIAssistant';
 
 export default function HomePage() {
   const { user } = useAuth();
@@ -22,6 +23,29 @@ export default function HomePage() {
     queryKey: ['journal-entries'],
     queryFn: () => backend.journal.listEntries(),
   });
+
+  const { data: meditationAnalytics } = useQuery({
+    queryKey: ['meditation-analytics'],
+    queryFn: () => backend.meditation.getAnalytics(),
+  });
+
+  const homeContextData = {
+    user: {
+      username: user?.username,
+      email: user?.email
+    },
+    overview: {
+      echo_glyphs_count: echoGlyphs?.glyphs.length || 0,
+      community_posts_count: sharedLearnings?.learnings.length || 0,
+      journal_entries_count: journalEntries?.entries.length || 0,
+      meditation_sessions: meditationAnalytics?.completed_sessions || 0
+    },
+    recent_activity: {
+      recent_glyphs: echoGlyphs?.glyphs.slice(0, 3).map(g => g.name) || [],
+      recent_learnings: sharedLearnings?.learnings.slice(0, 3).map(l => l.title) || [],
+      recent_entries: journalEntries?.entries.slice(0, 3).map(e => e.title) || []
+    }
+  };
 
   return (
     <div className="space-y-8">
@@ -147,6 +171,12 @@ export default function HomePage() {
           </CardContent>
         </Card>
       </div>
+
+      <AIAssistant 
+        contextType="general" 
+        contextData={homeContextData}
+        className="bottom-4 left-4"
+      />
     </div>
   );
 }

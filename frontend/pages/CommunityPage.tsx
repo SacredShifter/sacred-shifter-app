@@ -8,6 +8,7 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { useToast } from '@/components/ui/use-toast';
 import { useBackend } from '../contexts/AuthContext';
+import AIAssistant from '../components/AIAssistant';
 
 export default function CommunityPage() {
   const [newLearningTitle, setNewLearningTitle] = useState('');
@@ -73,6 +74,22 @@ export default function CommunityPage() {
       </div>
     );
   }
+
+  const communityContextData = {
+    shared_learnings_count: sharedLearnings?.learnings.length || 0,
+    messages_count: messages?.messages.length || 0,
+    recent_learnings: sharedLearnings?.learnings.slice(0, 3).map(learning => ({
+      title: learning.title,
+      content: learning.content.substring(0, 200) + '...',
+      username: learning.username,
+      date: learning.created_at
+    })) || [],
+    recent_messages: messages?.messages.slice(0, 3).map(message => ({
+      content: message.content.substring(0, 100) + '...',
+      sender: message.sender_username,
+      date: message.created_at
+    })) || []
+  };
 
   return (
     <div className="space-y-8">
@@ -202,6 +219,12 @@ export default function CommunityPage() {
           </Card>
         </div>
       </div>
+
+      <AIAssistant 
+        contextType="community" 
+        contextData={communityContextData}
+        className="bottom-4 left-4"
+      />
     </div>
   );
 }

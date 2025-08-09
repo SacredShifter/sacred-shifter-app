@@ -1,6 +1,7 @@
 import { ReactNode } from 'react';
 import Sidebar from './Sidebar';
 import MeditationPlayer from './MeditationPlayer';
+import AIAssistant from './AIAssistant';
 
 interface LayoutProps {
   children: ReactNode;
@@ -18,6 +19,7 @@ export default function Layout({ children }: LayoutProps) {
         </main>
       </div>
       <MeditationPlayer />
+      <AIAssistant />
     </div>
   );
 }

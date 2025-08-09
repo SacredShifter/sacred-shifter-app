@@ -6,6 +6,7 @@ import { Button } from '@/components/ui/button';
 import { Dialog, DialogContent, DialogHeader, DialogTitle } from '@/components/ui/dialog';
 import { Badge } from '@/components/ui/badge';
 import { useBackend } from '../contexts/AuthContext';
+import AIAssistant from '../components/AIAssistant';
 import type { EchoGlyph } from '~backend/echo_glyphs/list';
 
 export default function EchoGlyphsPage() {
@@ -24,6 +25,22 @@ export default function EchoGlyphsPage() {
       </div>
     );
   }
+
+  const echoGlyphsContextData = {
+    total_glyphs: echoGlyphs?.glyphs.length || 0,
+    resonance_types: [...new Set(echoGlyphs?.glyphs.map(g => g.resonance_type) || [])],
+    selected_glyph: selectedGlyph ? {
+      name: selectedGlyph.name,
+      resonance_type: selectedGlyph.resonance_type,
+      linked_nodes: selectedGlyph.linked_nodes,
+      notes: selectedGlyph.notes
+    } : null,
+    recent_glyphs: echoGlyphs?.glyphs.slice(0, 3).map(glyph => ({
+      name: glyph.name,
+      resonance_type: glyph.resonance_type,
+      timestamp: glyph.timestamp
+    })) || []
+  };
 
   return (
     <div className="space-y-8">
@@ -170,6 +187,12 @@ export default function EchoGlyphsPage() {
           )}
         </DialogContent>
       </Dialog>
+
+      <AIAssistant 
+        contextType="echo_glyphs" 
+        contextData={echoGlyphsContextData}
+        className="bottom-4 left-4"
+      />
     </div>
   );
 }
