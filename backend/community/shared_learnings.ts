@@ -59,7 +59,15 @@ export const createSharedLearning = api<CreateSharedLearningRequest, SharedLearn
 export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
   { expose: true, method: "GET", path: "/community/shared-learnings" },
   async () => {
-    const learnings = await communityDB.queryAll<SharedLearning>`
+    const learnings = await communityDB.queryAll<{
+      id: string;
+      user_id: string;
+      username: string;
+      title: string;
+      content: string;
+      created_at: Date;
+      updated_at: Date;
+    }>`
       SELECT 
         sl.id, 
         sl.user_id, 
@@ -69,7 +77,7 @@ export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
         sl.created_at, 
         sl.updated_at
       FROM shared_learnings sl
-      LEFT JOIN users u ON sl.user_id = u.id
+      JOIN users u ON sl.user_id = u.id
       ORDER BY sl.created_at DESC
     `;
 

@@ -72,7 +72,16 @@ export const listMessages = api<void, ListMessagesResponse>(
   async () => {
     const auth = getAuthData()!;
 
-    const messages = await communityDB.queryAll<Message>`
+    const messages = await communityDB.queryAll<{
+      id: string;
+      sender_id: string;
+      sender_username: string;
+      recipient_id: string;
+      recipient_username: string;
+      content: string;
+      read_at: Date | null;
+      created_at: Date;
+    }>`
       SELECT 
         m.id,
         m.sender_id,
@@ -83,8 +92,8 @@ export const listMessages = api<void, ListMessagesResponse>(
         m.read_at,
         m.created_at
       FROM messages m
-      LEFT JOIN users s ON m.sender_id = s.id
-      LEFT JOIN users r ON m.recipient_id = r.id
+      JOIN users s ON m.sender_id = s.id
+      JOIN users r ON m.recipient_id = r.id
       WHERE m.sender_id = ${auth.userID} OR m.recipient_id = ${auth.userID}
       ORDER BY m.created_at DESC
     `;
