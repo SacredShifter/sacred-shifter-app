@@ -83,8 +83,8 @@ export const listMessages = api<void, ListMessagesResponse>(
         m.read_at,
         m.created_at
       FROM messages m
-      JOIN users s ON m.sender_id = s.id
-      JOIN users r ON m.recipient_id = r.id
+      LEFT JOIN users s ON m.sender_id = s.id
+      LEFT JOIN users r ON m.recipient_id = r.id
       WHERE m.sender_id = ${auth.userID} OR m.recipient_id = ${auth.userID}
       ORDER BY m.created_at DESC
     `;

@@ -64,15 +64,27 @@ export function AuthProvider({ children }: AuthProviderProps) {
   }, []);
 
   const login = async (email: string, password: string) => {
-    const response = await backend.auth.login({ email, password });
-    localStorage.setItem('auth_token', response.session.value);
-    setUser(response.user);
+    try {
+      const response = await backend.auth.login({ email, password });
+      // Extract the session token from the cookie response
+      const sessionToken = response.session.value;
+      localStorage.setItem('auth_token', sessionToken);
+      setUser(response.user);
+    } catch (error) {
+      console.error('Login error:', error);
+      throw error;
+    }
   };
 
   const register = async (email: string, username: string, password: string) => {
-    const response = await backend.auth.register({ email, username, password });
-    localStorage.setItem('auth_token', response.token);
-    setUser(response.user);
+    try {
+      const response = await backend.auth.register({ email, username, password });
+      localStorage.setItem('auth_token', response.token);
+      setUser(response.user);
+    } catch (error) {
+      console.error('Registration error:', error);
+      throw error;
+    }
   };
 
   const logout = () => {

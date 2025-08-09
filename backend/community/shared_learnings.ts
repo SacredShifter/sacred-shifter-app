@@ -69,7 +69,7 @@ export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
         sl.created_at, 
         sl.updated_at
       FROM shared_learnings sl
-      JOIN users u ON sl.user_id = u.id
+      LEFT JOIN users u ON sl.user_id = u.id
       ORDER BY sl.created_at DESC
     `;
 
