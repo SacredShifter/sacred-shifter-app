@@ -54,7 +54,8 @@ export function AuthProvider({ children }: AuthProviderProps) {
       
       authenticatedBackend.auth.me()
         .then(setUser)
-        .catch(() => {
+        .catch((error) => {
+          console.error('Auth check failed:', error);
           localStorage.removeItem('auth_token');
         })
         .finally(() => setIsLoading(false));
@@ -65,7 +66,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const login = async (email: string, password: string) => {
     try {
+      console.log('Attempting login with:', { email });
       const response = await backend.auth.login({ email, password });
+      console.log('Login response:', response);
       localStorage.setItem('auth_token', response.token);
       setUser(response.user);
     } catch (error) {
@@ -76,7 +79,9 @@ export function AuthProvider({ children }: AuthProviderProps) {
 
   const register = async (email: string, username: string, password: string) => {
     try {
+      console.log('Attempting registration with:', { email, username });
       const response = await backend.auth.register({ email, username, password });
+      console.log('Registration response:', response);
       localStorage.setItem('auth_token', response.token);
       setUser(response.user);
     } catch (error) {

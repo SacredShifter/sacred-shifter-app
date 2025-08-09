@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import * as crypto from "crypto";
-import { authDB } from "./db";
+import { db } from "./db";
 
 interface LoginRequest {
   email: string;
@@ -26,7 +26,7 @@ export const login = api<LoginRequest, LoginResponse>(
     const passwordHash = crypto.createHash('sha256').update(password).digest('hex');
 
     // Find user with matching email and password
-    const user = await authDB.queryRow<{
+    const user = await db.queryRow<{
       id: string;
       email: string;
       username: string;
@@ -44,7 +44,7 @@ export const login = api<LoginRequest, LoginResponse>(
     const sessionToken = crypto.randomBytes(32).toString('hex');
 
     // Update user's session token
-    await authDB.exec`
+    await db.exec`
       UPDATE users 
       SET session_token = ${sessionToken}, updated_at = NOW()
       WHERE id = ${user.id}

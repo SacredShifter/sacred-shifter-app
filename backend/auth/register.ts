@@ -1,6 +1,6 @@
 import { api, APIError } from "encore.dev/api";
 import * as crypto from "crypto";
-import { authDB } from "./db";
+import { db } from "./db";
 
 interface RegisterRequest {
   email: string;
@@ -24,7 +24,7 @@ export const register = api<RegisterRequest, RegisterResponse>(
     const { email, username, password } = req;
 
     // Check if user already exists
-    const existingUser = await authDB.queryRow`
+    const existingUser = await db.queryRow`
       SELECT id FROM users WHERE email = ${email} OR username = ${username}
     `;
 
@@ -39,7 +39,7 @@ export const register = api<RegisterRequest, RegisterResponse>(
     const sessionToken = crypto.randomBytes(32).toString('hex');
 
     // Create user
-    const user = await authDB.queryRow<{
+    const user = await db.queryRow<{
       id: string;
       email: string;
       username: string;

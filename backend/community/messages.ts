@@ -1,6 +1,9 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { communityDB } from "./db";
+import { SQLDatabase } from "encore.dev/storage/sqldb";
+
+const usersDB = SQLDatabase.named("sacred_shifter");
 
 export interface Message {
   id: string;
@@ -29,6 +32,15 @@ export const sendMessage = api<SendMessageRequest, Message>(
     const auth = getAuthData()!;
     const { recipient_id, content } = req;
 
+    // Verify recipient exists
+    const recipient = await usersDB.queryRow<{ username: string }>`
+      SELECT username FROM users WHERE id = ${recipient_id}
+    `;
+
+    if (!recipient) {
+      throw APIError.notFound("recipient not found");
+    }
+
     const message = await communityDB.queryRow<{
       id: string;
       sender_id: string;
@@ -49,7 +61,7 @@ export const sendMessage = api<SendMessageRequest, Message>(
     return {
       ...message,
       sender_username: auth.username,
-      recipient_username: `User_${recipient_id.substring(0, 8)}`,
+      recipient_username: recipient.username,
     };
   }
 );
@@ -74,12 +86,32 @@ export const listMessages = api<void, ListMessagesResponse>(
       ORDER BY created_at DESC
     `;
 
-    // Add placeholder usernames since we can't join across databases
-    const messagesWithUsernames: Message[] = messages.map(message => ({
-      ...message,
-      sender_username: message.sender_id === auth.userID ? auth.username : `User_${message.sender_id.substring(0, 8)}`,
-      recipient_username: message.recipient_id === auth.userID ? auth.username : `User_${message.recipient_id.substring(0, 8)}`,
-    }));
+    // Get usernames for each message
+    const messagesWithUsernames: Message[] = [];
+    
+    for (const message of messages) {
+      try {
+        const senderUser = await usersDB.queryRow<{ username: string }>`
+          SELECT username FROM users WHERE id = ${message.sender_id}
+        `;
+        
+        const recipientUser = await usersDB.queryRow<{ username: string }>`
+          SELECT username FROM users WHERE id = ${message.recipient_id}
+        `;
+        
+        messagesWithUsernames.push({
+          ...message,
+          sender_username: senderUser?.username || `User_${message.sender_id.substring(0, 8)}`,
+          recipient_username: recipientUser?.username || `User_${message.recipient_id.substring(0, 8)}`,
+        });
+      } catch (error) {
+        messagesWithUsernames.push({
+          ...message,
+          sender_username: message.sender_id === auth.userID ? auth.username : `User_${message.sender_id.substring(0, 8)}`,
+          recipient_username: message.recipient_id === auth.userID ? auth.username : `User_${message.recipient_id.substring(0, 8)}`,
+        });
+      }
+    }
 
     return { messages: messagesWithUsernames };
   }

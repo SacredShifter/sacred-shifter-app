@@ -1,6 +1,9 @@
 import { api, APIError } from "encore.dev/api";
 import { getAuthData } from "~encore/auth";
 import { communityDB } from "./db";
+import { SQLDatabase } from "encore.dev/storage/sqldb";
+
+const usersDB = SQLDatabase.named("sacred_shifter");
 
 export interface SharedLearning {
   id: string;
@@ -56,8 +59,6 @@ export const createSharedLearning = api<CreateSharedLearningRequest, SharedLearn
 export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
   { expose: true, method: "GET", path: "/community/shared-learnings" },
   async () => {
-    // Since we can't do cross-database JOINs, we'll get the learnings first
-    // and then fetch usernames separately
     const learnings = await communityDB.queryAll<{
       id: string;
       user_id: string;
@@ -71,15 +72,26 @@ export const listSharedLearnings = api<void, ListSharedLearningsResponse>(
       ORDER BY created_at DESC
     `;
 
-    // For now, we'll use a placeholder username since we can't easily join across databases
-    // In a real implementation, you'd want to either:
-    // 1. Store username in the shared_learnings table
-    // 2. Make a separate API call to get usernames
-    // 3. Use a single database for both users and community data
-    const learningsWithUsernames: SharedLearning[] = learnings.map(learning => ({
-      ...learning,
-      username: `User_${learning.user_id.substring(0, 8)}`
-    }));
+    // Get usernames from the users database
+    const learningsWithUsernames: SharedLearning[] = [];
+    
+    for (const learning of learnings) {
+      try {
+        const user = await usersDB.queryRow<{ username: string }>`
+          SELECT username FROM users WHERE id = ${learning.user_id}
+        `;
+        
+        learningsWithUsernames.push({
+          ...learning,
+          username: user?.username || `User_${learning.user_id.substring(0, 8)}`
+        });
+      } catch (error) {
+        learningsWithUsernames.push({
+          ...learning,
+          username: `User_${learning.user_id.substring(0, 8)}`
+        });
+      }
+    }
 
     return { learnings: learningsWithUsernames };
   }

@@ -1,6 +1,6 @@
 import { authHandler } from "encore.dev/auth";
 import { Header, Cookie, APIError, Gateway } from "encore.dev/api";
-import { authDB } from "./db";
+import { db } from "./db";
 
 interface AuthParams {
   authorization?: Header<"Authorization">;
@@ -21,7 +21,7 @@ const auth = authHandler<AuthParams, AuthData>(
     }
 
     try {
-      const user = await authDB.queryRow<{
+      const user = await db.queryRow<{
         id: string;
         email: string;
         username: string;
