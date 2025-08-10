@@ -1,4 +1,4 @@
-import { useState, useRef, useEffect } from 'react'
+import React, { useState, useRef } from 'react'
 import { Send, Paperclip, Smile, MoreVertical, Reply, Edit, Trash, Info, Phone, Video, Eye } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
@@ -17,119 +17,56 @@ interface ChatViewProps {
   onShowDetails: () => void
 }
 
-export default function ChatView({ threadId, onShowDetails }: ChatViewProps) {
-  const [editingMessageId, setEditingMessageId] = useState<string | null>(null)
-  const [editingText, setEditingText] = useState('')
-  const messagesEndRef = useRef<HTMLDivElement>(null)
-  
-  const { 
-    messages, 
-    thread,
-    isLoading, 
-    replyTo, 
-    setReplyTo,
-    sendMessage, 
-    editMessage, 
-    deleteMessage,
-    getReadBy,
-    isSending 
-  } = useChat(threadId)
-  
-  const { typingMembers } = usePresence(threadId)
-  const { startCall } = useCall()
+const ChatView = () => {
+  const [isRecording, setIsRecording] = useState(false);
+  const [audioBlob, setAudioBlob] = useState<Blob | null>(null);
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const audioRef = useRef<HTMLAudioElement | null>(null);
 
-  const scrollToBottom = () => {
-    messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
-  }
+  const startRecording = async () => {
+    setIsRecording(true);
+    const stream = await navigator.mediaDevices.getUserMedia({ audio: true });
+    const mediaRecorder = new MediaRecorder(stream);
+    mediaRecorderRef.current = mediaRecorder;
 
-  useEffect(() => {
-    scrollToBottom()
-  }, [messages])
+    const chunks: BlobPart[] = [];
+    mediaRecorder.ondataavailable = (event) => chunks.push(event.data);
 
-  const handleSendMessage = async (body: string, content?: any) => {
-    try {
-      await sendMessage({ 
-        body, 
-        content, 
-        replyToId: replyTo?.id 
-      })
-      setReplyTo(null)
-    } catch (error) {
-      console.error('Failed to send message:', error)
-    }
-  }
+    mediaRecorder.onstop = () => {
+      const blob = new Blob(chunks, { type: 'audio/ogg; codecs=opus' });
+      setAudioBlob(blob);
+    };
 
-  const handleEditMessage = async (messageId: string) => {
-    if (!editingText.trim()) return
+    mediaRecorder.start();
+  };
+
+  const stopRecording = () => {
+    setIsRecording(false);
+    mediaRecorderRef.current?.stop();
+  };
+
+  const sendAudioMessage = async () => {
+    if (!audioBlob) return;
+    
+    const formData = new FormData();
+    formData.append('audio', audioBlob, 'voice-message.ogg');
     
     try {
-      await editMessage({ messageId, body: editingText })
-      setEditingMessageId(null)
-      setEditingText('')
+      const response = await fetch('/api/messenger/message/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      if (!response.ok) {
+        throw new Error('Audio upload failed');
+      }
+
+      const result = await response.json();
+      console.log('Audio uploaded successfully:', result);
     } catch (error) {
-      console.error('Failed to edit message:', error)
+      console.error('Error uploading audio:', error);
     }
-  }
-
-  const handleDeleteMessage = async (messageId: string) => {
-    if (confirm('Are you sure you want to delete this message?')) {
-      try {
-        await deleteMessage(messageId)
-      } catch (error) {
-        console.error('Failed to delete message:', error)
-      }
-    }
-  }
-
-  const startEdit = (message: any) => {
-    setEditingMessageId(message.id)
-    setEditingText(message.body || '')
-  }
-
-  const cancelEdit = () => {
-    setEditingMessageId(null)
-    setEditingText('')
-  }
-
-  const getThreadTitle = () => {
-    if (!thread) return 'Loading...'
-    if (thread.title) return thread.title
-    
-    const hasAura = thread.members.some(member => member.user_id === AURA_BOT_ID)
-    if (hasAura) return 'Aura - Sacred AI Assistant'
-    
-    if (thread.members.length === 2) {
-      const otherMember = thread.members.find(member => member.user_id !== defaultUser.id)
-      return otherMember?.display_name || 'Direct Message'
-    }
-    
-    return `Group (${thread.members.length} members)`
-  }
-
-  const groupMessagesByDate = (messages: any[]) => {
-    const groups: { [key: string]: any[] } = {}
-    
-    messages.forEach(message => {
-      const date = new Date(message.created_at).toDateString()
-      if (!groups[date]) {
-        groups[date] = []
-      }
-      groups[date].push(message)
-    })
-    
-    return groups
-  }
-
-  const groupedMessages = groupMessagesByDate(messages)
-  const otherMember = thread?.members.find(m => m.user_id !== defaultUser.id);
-
-  if (isLoading) {
-    return (
-      <div className="flex items-center justify-center h-full bg-gray-900">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-400"></div>
-      </div>
-    )
-  }
+  };
 
   return (
     <div className="flex flex-col h-full bg-gradient-to-b from-gray-900 to-purple-900/30 text-gray-200">
@@ -300,6 +237,22 @@ export default function ChatView({ threadId, onShowDetails }: ChatViewProps) {
       )}
 
       <MessageInput onSendMessage={handleSendMessage} disabled={isSending} threadId={threadId} />
+      <input type="file" onChange={handleFileChange} />
+      <button onClick={handleSendMessage}>Send Message</button>
+
+      {isRecording ? (
+        <button onClick={stopRecording}>Stop Recording</button>
+      ) : (
+        <button onClick={startRecording}>Record</button>
+      )}
+      {audioBlob && (
+        <div>
+          <audio ref={audioRef} controls src={URL.createObjectURL(audioBlob)} />
+          <button onClick={sendAudioMessage}>Send Message</button>
+        </div>
+      )}
     </div>
   )
 }
+
+export default ChatView

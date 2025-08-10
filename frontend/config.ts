@@ -2,17 +2,17 @@
 // Set your Supabase project credentials here
 
 // Your Supabase project URL (found in Project Settings > API)
-export const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://your-project-ref.supabase.co'
+export const supabaseUrl = import.meta.env.VITE_REACT_APP_SUPABASE_URL || 'https://your-project-ref.supabase.co'
 
 // Your Supabase anon/public key (found in Project Settings > API)
-export const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key-here'
+export const supabaseAnonKey = import.meta.env.VITE_REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key-here'
 
 // Environment configuration
-export const isDevelopment = process.env.NODE_ENV === 'development'
-export const isProduction = process.env.NODE_ENV === 'production'
+export const isDevelopment = import.meta.env.MODE === 'development'
+export const isProduction = import.meta.env.MODE === 'production'
 
 // API configuration
-export const apiBaseUrl = process.env.REACT_APP_API_BASE_URL || 'http://localhost:4000'
+export const apiBaseUrl = import.meta.env.VITE_REACT_APP_API_BASE_URL || 'http://localhost:4000'
 
 // Feature flags
 export const features = {
