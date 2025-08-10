@@ -38,7 +38,6 @@ export class Client {
     public readonly community: community.ServiceClient
     public readonly journal: journal.ServiceClient
     public readonly meditation: meditation.ServiceClient
-    public readonly social: social.ServiceClient
     public readonly system: system.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
@@ -59,7 +58,6 @@ export class Client {
         this.community = new community.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
         this.meditation = new meditation.ServiceClient(base)
-        this.social = new social.ServiceClient(base)
         this.system = new system.ServiceClient(base)
     }
 
@@ -124,10 +122,16 @@ export namespace ai {
         /**
          * Sends a message to the AI assistant and gets a response.
          */
-        public async chat(params: RequestType<typeof api_ai_assistant_chat>): Promise<ResponseType<typeof api_ai_assistant_chat>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/ai/chat`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_ai_assistant_chat>
+        public async chat(params: RequestType<typeof api_ai_assistant_chat>): Promise<StreamIn<StreamResponse<typeof api_ai_assistant_chat>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "context_data":    params["context_data"] === undefined ? undefined : String(params["context_data"]),
+                "context_type":    params["context_type"],
+                "conversation_id": params["conversation_id"],
+                message:           params.message,
+            })
+
+            return await this.baseClient.createStreamIn(`/ai/chat`, {query})
         }
 
         /**
@@ -365,11 +369,6 @@ export namespace codex {
  * Import the endpoint handlers to derive the types for the client.
  */
 import {
-    listMessages as api_community_messages_listMessages,
-    markMessageRead as api_community_messages_markMessageRead,
-    sendMessage as api_community_messages_sendMessage
-} from "~backend/community/messages";
-import {
     createSharedLearning as api_community_shared_learnings_createSharedLearning,
     listSharedLearnings as api_community_shared_learnings_listSharedLearnings
 } from "~backend/community/shared_learnings";
@@ -382,10 +381,7 @@ export namespace community {
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
             this.createSharedLearning = this.createSharedLearning.bind(this)
-            this.listMessages = this.listMessages.bind(this)
             this.listSharedLearnings = this.listSharedLearnings.bind(this)
-            this.markMessageRead = this.markMessageRead.bind(this)
-            this.sendMessage = this.sendMessage.bind(this)
         }
 
         /**
@@ -398,37 +394,12 @@ export namespace community {
         }
 
         /**
-         * Retrieves messages for the current user.
-         */
-        public async listMessages(): Promise<ResponseType<typeof api_community_messages_listMessages>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/community/messages`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_community_messages_listMessages>
-        }
-
-        /**
          * Retrieves all shared learning posts.
          */
         public async listSharedLearnings(): Promise<ResponseType<typeof api_community_shared_learnings_listSharedLearnings>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/community/shared-learnings`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_community_shared_learnings_listSharedLearnings>
-        }
-
-        /**
-         * Marks a message as read.
-         */
-        public async markMessageRead(params: { id: string }): Promise<void> {
-            await this.baseClient.callTypedAPI(`/community/messages/${encodeURIComponent(params.id)}/read`, {method: "PUT", body: undefined})
-        }
-
-        /**
-         * Sends a direct message to another user.
-         */
-        public async sendMessage(params: RequestType<typeof api_community_messages_sendMessage>): Promise<ResponseType<typeof api_community_messages_sendMessage>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/community/messages`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_community_messages_sendMessage>
         }
     }
 }
@@ -640,201 +611,6 @@ export namespace meditation {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/start`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_startSession>
-        }
-    }
-}
-
-/**
- * Import the endpoint handlers to derive the types for the client.
- */
-import {
-    createCircle as api_social_circles_createCircle,
-    joinCircle as api_social_circles_joinCircle,
-    leaveCircle as api_social_circles_leaveCircle,
-    listCircles as api_social_circles_listCircles
-} from "~backend/social/circles";
-import {
-    createComment as api_social_comments_createComment,
-    listComments as api_social_comments_listComments
-} from "~backend/social/comments";
-import { health as api_social_health_health } from "~backend/social/health";
-import {
-    listMessages as api_social_messages_listMessages,
-    sendMessage as api_social_messages_sendMessage
-} from "~backend/social/messages";
-import {
-    createPost as api_social_posts_createPost,
-    listPosts as api_social_posts_listPosts,
-    toggleLike as api_social_posts_toggleLike
-} from "~backend/social/posts";
-import {
-    getProfile as api_social_profiles_getProfile,
-    updateProfile as api_social_profiles_updateProfile
-} from "~backend/social/profiles";
-import { getStats as api_social_stats_getStats } from "~backend/social/stats";
-
-export namespace social {
-
-    export class ServiceClient {
-        private baseClient: BaseClient
-
-        constructor(baseClient: BaseClient) {
-            this.baseClient = baseClient
-            this.createCircle = this.createCircle.bind(this)
-            this.createComment = this.createComment.bind(this)
-            this.createPost = this.createPost.bind(this)
-            this.getProfile = this.getProfile.bind(this)
-            this.getStats = this.getStats.bind(this)
-            this.health = this.health.bind(this)
-            this.joinCircle = this.joinCircle.bind(this)
-            this.leaveCircle = this.leaveCircle.bind(this)
-            this.listCircles = this.listCircles.bind(this)
-            this.listComments = this.listComments.bind(this)
-            this.listMessages = this.listMessages.bind(this)
-            this.listPosts = this.listPosts.bind(this)
-            this.sendMessage = this.sendMessage.bind(this)
-            this.toggleLike = this.toggleLike.bind(this)
-            this.updateProfile = this.updateProfile.bind(this)
-        }
-
-        /**
-         * Creates a new circle.
-         */
-        public async createCircle(params: RequestType<typeof api_social_circles_createCircle>): Promise<ResponseType<typeof api_social_circles_createCircle>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/circles`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_circles_createCircle>
-        }
-
-        /**
-         * Creates a new comment on a post.
-         */
-        public async createComment(params: RequestType<typeof api_social_comments_createComment>): Promise<ResponseType<typeof api_social_comments_createComment>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/comments`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_comments_createComment>
-        }
-
-        /**
-         * Creates a new social post.
-         */
-        public async createPost(params: RequestType<typeof api_social_posts_createPost>): Promise<ResponseType<typeof api_social_posts_createPost>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/posts`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_posts_createPost>
-        }
-
-        /**
-         * Gets or creates the current user's profile.
-         */
-        public async getProfile(): Promise<ResponseType<typeof api_social_profiles_getProfile>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/profile`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_getProfile>
-        }
-
-        /**
-         * Gets social network statistics.
-         */
-        public async getStats(): Promise<ResponseType<typeof api_social_stats_getStats>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/stats`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_stats_getStats>
-        }
-
-        /**
-         * Health check endpoint for the social module.
-         */
-        public async health(): Promise<ResponseType<typeof api_social_health_health>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/health`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_health_health>
-        }
-
-        /**
-         * Joins a circle.
-         */
-        public async joinCircle(params: { circle_id: string }): Promise<void> {
-            await this.baseClient.callTypedAPI(`/social/circles/${encodeURIComponent(params.circle_id)}/join`, {method: "POST", body: undefined})
-        }
-
-        /**
-         * Leaves a circle.
-         */
-        public async leaveCircle(params: { circle_id: string }): Promise<void> {
-            await this.baseClient.callTypedAPI(`/social/circles/${encodeURIComponent(params.circle_id)}/leave`, {method: "DELETE", body: undefined})
-        }
-
-        /**
-         * Lists all circles.
-         */
-        public async listCircles(): Promise<ResponseType<typeof api_social_circles_listCircles>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/circles`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_circles_listCircles>
-        }
-
-        /**
-         * Lists comments for a post.
-         */
-        public async listComments(params: { post_id: string }): Promise<ResponseType<typeof api_social_comments_listComments>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.post_id)}/comments`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_comments_listComments>
-        }
-
-        /**
-         * Lists messages for the current user.
-         */
-        public async listMessages(): Promise<ResponseType<typeof api_social_messages_listMessages>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/messages`, {method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_messages_listMessages>
-        }
-
-        /**
-         * Lists social posts.
-         */
-        public async listPosts(params: RequestType<typeof api_social_posts_listPosts>): Promise<ResponseType<typeof api_social_posts_listPosts>> {
-            // Convert our params into the objects we need for the request
-            const query = makeRecord<string, string | string[]>({
-                "author_id":      params["author_id"],
-                "circle_id":      params["circle_id"],
-                "following_only": params["following_only"] === undefined ? undefined : String(params["following_only"]),
-                limit:            params.limit === undefined ? undefined : String(params.limit),
-                offset:           params.offset === undefined ? undefined : String(params.offset),
-            })
-
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/posts`, {query, method: "GET", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_posts_listPosts>
-        }
-
-        /**
-         * Sends a direct message.
-         */
-        public async sendMessage(params: RequestType<typeof api_social_messages_sendMessage>): Promise<ResponseType<typeof api_social_messages_sendMessage>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/messages`, {method: "POST", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_messages_sendMessage>
-        }
-
-        /**
-         * Toggles like on a post.
-         */
-        public async toggleLike(params: { post_id: string }): Promise<ResponseType<typeof api_social_posts_toggleLike>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.post_id)}/like`, {method: "POST", body: undefined})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_posts_toggleLike>
-        }
-
-        /**
-         * Updates the current user's profile.
-         */
-        public async updateProfile(params: RequestType<typeof api_social_profiles_updateProfile>): Promise<ResponseType<typeof api_social_profiles_updateProfile>> {
-            // Now make the actual call to the API
-            const resp = await this.baseClient.callTypedAPI(`/social/profile`, {method: "PUT", body: JSON.stringify(params)})
-            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_updateProfile>
         }
     }
 }

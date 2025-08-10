@@ -26,6 +26,8 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
   const [message, setMessage] = useState('');
   const [currentConversationId, setCurrentConversationId] = useState<string | null>(null);
   const [isSettingsOpen, setIsSettingsOpen] = useState(false);
+  const [streamingResponse, setStreamingResponse] = useState('');
+  const [isStreaming, setIsStreaming] = useState(false);
   const messagesEndRef = useRef<HTMLDivElement>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
@@ -48,25 +50,6 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
     enabled: isOpen,
   });
 
-  const chatMutation = useMutation({
-    mutationFn: (data: { message: string; conversation_id?: string; context_type?: string; context_data?: Record<string, any> }) =>
-      backend.ai.chat(data),
-    onSuccess: (response) => {
-      setCurrentConversationId(response.conversation.id);
-      queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
-      queryClient.invalidateQueries({ queryKey: ['ai-conversation', response.conversation.id] });
-      setMessage('');
-    },
-    onError: (error) => {
-      console.error('Chat error:', error);
-      toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const updatePreferencesMutation = useMutation({
     mutationFn: (data: any) => backend.ai.updatePreferences(data),
     onSuccess: () => {
@@ -84,17 +67,57 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
 
   useEffect(() => {
     scrollToBottom();
-  }, [currentConversation?.messages]);
+  }, [currentConversation?.messages, streamingResponse]);
 
-  const handleSendMessage = () => {
+  const handleSendMessage = async () => {
     if (!message.trim()) return;
 
-    chatMutation.mutate({
-      message,
-      conversation_id: currentConversationId || undefined,
-      context_type: contextType,
-      context_data: contextData,
-    });
+    const userMessageContent = message;
+    setMessage('');
+    setStreamingResponse('');
+    setIsStreaming(true);
+
+    try {
+      const stream = await backend.ai.chat({
+        message: userMessageContent,
+        conversation_id: currentConversationId || undefined,
+        context_type: contextType,
+        context_data: contextData,
+      });
+
+      let conversationPayload: AIConversation | null = null;
+
+      for await (const chunk of stream) {
+        switch (chunk.type) {
+          case 'conversation':
+            conversationPayload = chunk.payload as AIConversation;
+            setCurrentConversationId(conversationPayload.id);
+            queryClient.setQueryData(['ai-conversation', conversationPayload.id], conversationPayload);
+            break;
+          case 'data':
+            setStreamingResponse(prev => prev + chunk.payload);
+            break;
+          case 'end':
+            if (conversationPayload) {
+              queryClient.invalidateQueries({ queryKey: ['ai-conversation', conversationPayload.id] });
+              queryClient.invalidateQueries({ queryKey: ['ai-conversations'] });
+            }
+            setStreamingResponse('');
+            setIsStreaming(false);
+            break;
+          case 'error':
+            console.error('AI stream error:', chunk.payload);
+            toast({ title: "Error", description: "An error occurred during streaming.", variant: "destructive" });
+            setStreamingResponse('');
+            setIsStreaming(false);
+            break;
+        }
+      }
+    } catch (error) {
+      console.error('Chat error:', error);
+      toast({ title: "Error", description: "Failed to send message. Please try again.", variant: "destructive" });
+      setIsStreaming(false);
+    }
   };
 
   const handleKeyPress = (e: React.KeyboardEvent) => {
@@ -234,7 +257,7 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
         <CardContent className="flex flex-col h-[520px] p-0">
           <ScrollArea className="flex-1 p-4">
             <div className="space-y-4">
-              {!currentConversation?.messages?.length && (
+              {!currentConversation?.messages?.length && !isStreaming && (
                 <div className="text-center py-8">
                   <Bot className="w-12 h-12 mx-auto text-purple-400 mb-4" />
                   <h3 className="text-lg font-medium text-gray-900 mb-2">Hello! I'm Aether</h3>
@@ -271,18 +294,14 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
                 </div>
               ))}
 
-              {chatMutation.isPending && (
+              {isStreaming && (
                 <div className="flex justify-start">
                   <div className="bg-gray-100 rounded-lg p-3 max-w-[80%]">
-                    <div className="flex items-center">
+                    <div className="flex items-center mb-1">
                       <Bot className="w-4 h-4 mr-2" />
-                      <span className="text-xs text-gray-600">Aether is thinking...</span>
+                      <span className="text-xs opacity-75">Aether</span>
                     </div>
-                    <div className="flex space-x-1 mt-2">
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce"></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.1s' }}></div>
-                      <div className="w-2 h-2 bg-gray-400 rounded-full animate-bounce" style={{ animationDelay: '0.2s' }}></div>
-                    </div>
+                    <p className="text-sm whitespace-pre-wrap">{streamingResponse}</p>
                   </div>
                 </div>
               )}
@@ -298,12 +317,12 @@ export default function AIAssistant({ contextType = 'general', contextData = {},
                 onChange={(e) => setMessage(e.target.value)}
                 onKeyPress={handleKeyPress}
                 placeholder="Ask Aether anything..."
-                disabled={chatMutation.isPending}
+                disabled={isStreaming}
                 className="flex-1"
               />
               <Button
                 onClick={handleSendMessage}
-                disabled={!message.trim() || chatMutation.isPending}
+                disabled={!message.trim() || isStreaming}
                 size="sm"
               >
                 <Send className="w-4 h-4" />

@@ -1,4 +1,4 @@
-import { api, APIError } from "encore.dev/api";
+import { api, APIError, StreamOut } from "encore.dev/api";
 import { aiDB } from "./db";
 import { secret } from "encore.dev/config";
 import { 
@@ -51,9 +51,9 @@ interface ChatRequest {
   context_data?: Record<string, any>;
 }
 
-interface ChatResponse {
-  conversation: AIConversation;
-  response: string;
+export interface StreamMessage {
+  type: 'data' | 'conversation' | 'error' | 'end';
+  payload: string | AIConversation;
 }
 
 interface ListConversationsResponse {
@@ -65,9 +65,9 @@ interface GetConversationParams {
 }
 
 // Sends a message to the AI assistant and gets a response.
-export const chat = api<ChatRequest, ChatResponse>(
-  { expose: true, method: "POST", path: "/ai/chat" },
-  async (req) => {
+export const chat = api.streamOut<ChatRequest, StreamMessage>(
+  { expose: true, path: "/ai/chat" },
+  async (req, stream) => {
     const requestId = generateRequestId();
     
     try {
@@ -83,128 +83,128 @@ export const chat = api<ChatRequest, ChatResponse>(
       const userId = "default-user"; // Use default user since no auth
       const username = "Sacred Seeker"; // Use default username since no auth
 
-      return await measurePerformance("ai_chat", async () => {
-        let conversation: AIConversation;
+      let conversation: AIConversation;
 
-        if (conversation_id) {
-          validateId(conversation_id, "conversation_id");
-          
-          // Get existing conversation
-          const existingConversation = await dbManager.executeQuery(
-            aiDB,
-            "get_conversation",
-            () => aiDB.queryRow<AIConversation>`
-              SELECT id, user_id, title, context_type, created_at, updated_at
-              FROM ai_conversations
-              WHERE id = ${conversation_id} AND user_id = ${userId}
-            `
-          );
+      if (conversation_id) {
+        validateId(conversation_id, "conversation_id");
+        
+        const existingConversation = await dbManager.executeQuery(
+          aiDB,
+          "get_conversation",
+          () => aiDB.queryRow<AIConversation>`
+            SELECT id, user_id, title, context_type, created_at, updated_at
+            FROM ai_conversations
+            WHERE id = ${conversation_id} AND user_id = ${userId}
+          `
+        );
 
-          if (!existingConversation) {
-            throw APIError.notFound("conversation not found");
-          }
-
-          conversation = existingConversation;
-        } else {
-          // Create new conversation
-          const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
-          
-          const newConversation = await dbManager.executeQuery(
-            aiDB,
-            "create_conversation",
-            () => aiDB.queryRow<AIConversation>`
-              INSERT INTO ai_conversations (user_id, title, context_type)
-              VALUES (${userId}, ${title}, ${context_type})
-              RETURNING id, user_id, title, context_type, created_at, updated_at
-            `
-          );
-
-          if (!newConversation) {
-            throw APIError.internal("failed to create conversation");
-          }
-
-          conversation = newConversation;
+        if (!existingConversation) {
+          throw APIError.notFound("conversation not found");
         }
 
-        // Get user preferences
-        const userPrefs = await dbManager.executeQuery(
+        conversation = existingConversation;
+      } else {
+        const title = message.length > 50 ? message.substring(0, 50) + "..." : message;
+        
+        const newConversation = await dbManager.executeQuery(
           aiDB,
-          "get_user_preferences",
-          () => aiDB.queryRow<{
-            assistant_personality: string;
-            preferred_response_style: string;
-            admin_mode_enabled: boolean;
-          }>`
-            SELECT assistant_personality, preferred_response_style, admin_mode_enabled
-            FROM ai_user_preferences
-            WHERE user_id = ${userId}
+          "create_conversation",
+          () => aiDB.queryRow<AIConversation>`
+            INSERT INTO ai_conversations (user_id, title, context_type)
+            VALUES (${userId}, ${title}, ${context_type})
+            RETURNING id, user_id, title, context_type, created_at, updated_at
           `
         );
 
-        // Get conversation history (limit to last 20 messages for performance)
-        const messageHistory = await dbManager.executeQuery(
-          aiDB,
-          "get_message_history",
-          () => aiDB.queryAll<AIMessage>`
-            SELECT id, conversation_id, role, content, metadata, created_at
-            FROM ai_messages
-            WHERE conversation_id = ${conversation.id}
-            ORDER BY created_at ASC
-            LIMIT 20
-          `
-        );
+        if (!newConversation) {
+          throw APIError.internal("failed to create conversation");
+        }
 
-        // Store user message
-        await dbManager.executeQuery(
-          aiDB,
-          "store_user_message",
-          () => aiDB.exec`
-            INSERT INTO ai_messages (conversation_id, role, content, metadata)
-            VALUES (${conversation.id}, 'user', ${message}, ${JSON.stringify(context_data)})
-          `
-        );
+        conversation = newConversation;
+      }
 
-        // Generate AI response with circuit breaker
-        const aiResponse = await aiCircuitBreaker.execute(() =>
-          generateAIResponse({
-            message,
-            messageHistory,
-            contextType: context_type,
-            contextData: context_data,
-            userPreferences: userPrefs,
-            username: username,
-            isAdmin: userPrefs?.admin_mode_enabled || false,
-            requestId
-          })
-        );
+      // Send conversation details to client
+      await stream.send({ type: 'conversation', payload: conversation });
 
-        // Store AI response
-        await dbManager.executeQuery(
-          aiDB,
-          "store_ai_response",
-          () => aiDB.exec`
-            INSERT INTO ai_messages (conversation_id, role, content, metadata)
-            VALUES (${conversation.id}, 'assistant', ${aiResponse}, '{}')
-          `
-        );
+      // Get user preferences
+      const userPrefs = await dbManager.executeQuery(
+        aiDB,
+        "get_user_preferences",
+        () => aiDB.queryRow<{
+          assistant_personality: string;
+          preferred_response_style: string;
+          admin_mode_enabled: boolean;
+        }>`
+          SELECT assistant_personality, preferred_response_style, admin_mode_enabled
+          FROM ai_user_preferences
+          WHERE user_id = ${userId}
+        `
+      );
 
-        // Update conversation timestamp
-        await dbManager.executeQuery(
-          aiDB,
-          "update_conversation_timestamp",
-          () => aiDB.exec`
-            UPDATE ai_conversations
-            SET updated_at = NOW()
-            WHERE id = ${conversation.id}
-          `
-        );
+      // Get conversation history (limit to last 20 messages for performance)
+      const messageHistory = await dbManager.executeQuery(
+        aiDB,
+        "get_message_history",
+        () => aiDB.queryAll<AIMessage>`
+          SELECT id, conversation_id, role, content, metadata, created_at
+          FROM ai_messages
+          WHERE conversation_id = ${conversation.id}
+          ORDER BY created_at ASC
+          LIMIT 20
+        `
+      );
 
-        return {
-          conversation,
-          response: aiResponse
-        };
-      });
+      // Store user message
+      await dbManager.executeQuery(
+        aiDB,
+        "store_user_message",
+        () => aiDB.exec`
+          INSERT INTO ai_messages (conversation_id, role, content, metadata)
+          VALUES (${conversation.id}, 'user', ${message}, ${JSON.stringify(context_data)})
+        `
+      );
+
+      // Generate AI response with circuit breaker and streaming
+      const aiResponseContent = await aiCircuitBreaker.execute(() =>
+        generateAIResponse({
+          message,
+          messageHistory,
+          contextType: context_type,
+          contextData: context_data,
+          userPreferences: userPrefs,
+          username: username,
+          isAdmin: userPrefs?.admin_mode_enabled || false,
+          requestId,
+          stream
+        })
+      );
+
+      // Store AI response
+      await dbManager.executeQuery(
+        aiDB,
+        "store_ai_response",
+        () => aiDB.exec`
+          INSERT INTO ai_messages (conversation_id, role, content, metadata)
+          VALUES (${conversation.id}, 'assistant', ${aiResponseContent}, '{}')
+        `
+      );
+
+      // Update conversation timestamp
+      await dbManager.executeQuery(
+        aiDB,
+        "update_conversation_timestamp",
+        () => aiDB.exec`
+          UPDATE ai_conversations
+          SET updated_at = NOW()
+          WHERE id = ${conversation.id}
+        `
+      );
+
+      await stream.send({ type: 'end', payload: 'Stream ended' });
+
     } catch (error) {
+      const err = error as Error;
+      await stream.send({ type: 'error', payload: err.message });
       handleModuleError("ai", "chat", error, requestId);
     }
   }
@@ -328,6 +328,7 @@ interface GenerateAIResponseParams {
   username: string;
   isAdmin: boolean;
   requestId: string;
+  stream: StreamOut<StreamMessage>;
 }
 
 async function generateAIResponse(params: GenerateAIResponseParams): Promise<string> {
@@ -335,11 +336,11 @@ async function generateAIResponse(params: GenerateAIResponseParams): Promise<str
     message,
     messageHistory,
     contextType,
-    contextData,
     userPreferences,
     username,
     isAdmin,
-    requestId
+    requestId,
+    stream
   } = params;
 
   const systemPrompt = buildSystemPrompt(contextType, userPreferences, username, isAdmin);
@@ -371,6 +372,7 @@ async function generateAIResponse(params: GenerateAIResponseParams): Promise<str
           temperature: 0.7,
           top_p: 0.9,
           timeout: 30000,
+          stream: true,
         })
       });
 
@@ -379,13 +381,43 @@ async function generateAIResponse(params: GenerateAIResponseParams): Promise<str
         throw new Error(`OpenRouter API error: ${response.status} - ${errorText}`);
       }
 
-      const data = await response.json();
-      
-      if (!data.choices || !data.choices[0] || !data.choices[0].message) {
-        throw new Error("Invalid response format from OpenRouter API");
+      if (!response.body) {
+        throw new Error("No response body from OpenRouter");
       }
 
-      return data.choices[0].message.content || "I apologize, but I'm having trouble generating a response right now. Please try again.";
+      const reader = response.body.getReader();
+      const decoder = new TextDecoder();
+      let fullResponse = '';
+
+      while (true) {
+        const { done, value } = await reader.read();
+        if (done) break;
+
+        const chunk = decoder.decode(value);
+        const lines = chunk.split('\n').filter(line => line.trim() !== '');
+
+        for (const line of lines) {
+          if (line.startsWith('data: ')) {
+            const jsonStr = line.substring(6);
+            if (jsonStr === '[DONE]') {
+              // End of stream from OpenAI
+            } else {
+              try {
+                const data = JSON.parse(jsonStr);
+                const content = data.choices[0]?.delta?.content;
+                if (content) {
+                  fullResponse += content;
+                  await stream.send({ type: 'data', payload: content });
+                }
+              } catch (e) {
+                console.error("Failed to parse AI stream chunk:", jsonStr);
+              }
+            }
+          }
+        }
+      }
+      
+      return fullResponse || "I apologize, but I'm having trouble generating a response right now. Please try again.";
     }, 3, 1000);
   } catch (error) {
     handleExternalServiceError("ai", "generateAIResponse", "OpenRouter", error, requestId);

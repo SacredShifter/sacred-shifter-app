@@ -40,10 +40,10 @@ export function useFeed(circleId?: string) {
     queryKey: ['social-posts', circleId],
     queryFn: async () => {
       let query = supabase
-        .from('posts')
+        .from('social_posts')
         .select(`
           *,
-          author:auth.users!posts_author_id_fkey(id, email, user_metadata)
+          author:social_profiles!author_id(user_id, username, display_name, avatar_url)
         `)
         .order('created_at', { ascending: false })
 
@@ -60,13 +60,13 @@ export function useFeed(circleId?: string) {
         (data || []).map(async (post) => {
           // Get reactions
           const { data: reactions } = await supabase
-            .from('post_reactions')
+            .from('social_post_reactions')
             .select('kind, user_id')
             .eq('post_id', post.id)
 
           // Get comment count
           const { count: commentCount } = await supabase
-            .from('comments')
+            .from('social_comments')
             .select('*', { count: 'exact', head: true })
             .eq('post_id', post.id)
 
@@ -106,14 +106,13 @@ export function useFeed(circleId?: string) {
       media?: any[]
     }) => {
       const { data: post, error } = await supabase
-        .from('posts')
+        .from('social_posts')
         .insert({
           author_id: defaultUser.id,
-          body: data.content,
-          content: { body: data.content },
+          content: data.content,
           visibility: data.visibility,
-          circle_id: data.circle_id,
-          media: data.media || []
+          // circle_id: data.circle_id,
+          media_urls: data.media || []
         })
         .select()
         .single()
@@ -142,7 +141,7 @@ export function useFeed(circleId?: string) {
     mutationFn: async (data: { postId: string; kind: string }) => {
       // Check if reaction exists
       const { data: existingReaction } = await supabase
-        .from('post_reactions')
+        .from('social_post_reactions')
         .select('*')
         .eq('post_id', data.postId)
         .eq('user_id', defaultUser.id)
@@ -152,7 +151,7 @@ export function useFeed(circleId?: string) {
       if (existingReaction) {
         // Remove reaction
         const { error } = await supabase
-          .from('post_reactions')
+          .from('social_post_reactions')
           .delete()
           .eq('post_id', data.postId)
           .eq('user_id', defaultUser.id)
@@ -162,7 +161,7 @@ export function useFeed(circleId?: string) {
       } else {
         // Add reaction
         const { error } = await supabase
-          .from('post_reactions')
+          .from('social_post_reactions')
           .insert({
             post_id: data.postId,
             user_id: defaultUser.id,
@@ -187,7 +186,7 @@ export function useFeed(circleId?: string) {
 
   useEffect(() => {
     if (postsData?.posts) {
-      setPosts(postsData.posts)
+      setPosts(postsData.posts as any)
       setHasMore(postsData.has_more)
     }
   }, [postsData])

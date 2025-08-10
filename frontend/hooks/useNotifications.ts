@@ -2,7 +2,7 @@ import { useState, useEffect } from 'react'
 import { supabase } from '../lib/supabase'
 import type { Database } from '../lib/supabase'
 
-type Notification = Database['public']['Tables']['notifications']['Row']
+type Notification = Database['public']['Tables']['social_notifications']['Row']
 
 export function useNotifications() {
   const [notifications, setNotifications] = useState<Notification[]>([])
@@ -18,7 +18,7 @@ export function useNotifications() {
       if (!user.user) return
 
       const { data, error } = await supabase
-        .from('notifications')
+        .from('social_notifications')
         .select('*')
         .eq('user_id', user.user.id)
         .order('created_at', { ascending: false })
@@ -38,7 +38,7 @@ export function useNotifications() {
   const markAsRead = async (notificationId: string) => {
     try {
       const { error } = await supabase
-        .from('notifications')
+        .from('social_notifications')
         .update({ is_read: true })
         .eq('id', notificationId)
 
@@ -60,7 +60,7 @@ export function useNotifications() {
       if (!user.user) return
 
       const { error } = await supabase
-        .from('notifications')
+        .from('social_notifications')
         .update({ is_read: true })
         .eq('user_id', user.user.id)
         .eq('is_read', false)
@@ -82,7 +82,7 @@ export function useNotifications() {
     const subscription = supabase
       .channel('notifications')
       .on('postgres_changes', 
-        { event: 'INSERT', schema: 'public', table: 'notifications' },
+        { event: 'INSERT', schema: 'public', table: 'social_notifications' },
         () => fetchNotifications()
       )
       .subscribe()

@@ -32,10 +32,10 @@ export function useCircles() {
     queryFn: async () => {
       // Get all circles with member counts
       const { data: circles, error } = await supabase
-        .from('circles')
+        .from('social_circles')
         .select(`
           *,
-          owner:auth.users!circles_owner_id_fkey(id, email, user_metadata)
+          owner:social_profiles!owner_id(user_id, username, display_name, avatar_url)
         `)
         .order('created_at', { ascending: false })
 
@@ -46,7 +46,7 @@ export function useCircles() {
         (circles || []).map(async (circle) => {
           // Check if current user is a member
           const { data: membership } = await supabase
-            .from('circle_members')
+            .from('social_circle_members')
             .select('*')
             .eq('circle_id', circle.id)
             .eq('user_id', defaultUser.id)
@@ -54,7 +54,7 @@ export function useCircles() {
 
           // Get member count
           const { count: memberCount } = await supabase
-            .from('circle_members')
+            .from('social_circle_members')
             .select('*', { count: 'exact', head: true })
             .eq('circle_id', circle.id)
 
@@ -78,7 +78,7 @@ export function useCircles() {
     }) => {
       // Create circle
       const { data: circle, error } = await supabase
-        .from('circles')
+        .from('social_circles')
         .insert({
           owner_id: defaultUser.id,
           name: data.name,
@@ -92,7 +92,7 @@ export function useCircles() {
 
       // Add creator as owner member
       const { error: memberError } = await supabase
-        .from('circle_members')
+        .from('social_circle_members')
         .insert({
           circle_id: circle.id,
           user_id: defaultUser.id,
@@ -123,7 +123,7 @@ export function useCircles() {
   const joinCircleMutation = useMutation({
     mutationFn: async (circleId: string) => {
       const { error } = await supabase
-        .from('circle_members')
+        .from('social_circle_members')
         .insert({
           circle_id: circleId,
           user_id: defaultUser.id,
@@ -152,7 +152,7 @@ export function useCircles() {
   const leaveCircleMutation = useMutation({
     mutationFn: async (circleId: string) => {
       const { error } = await supabase
-        .from('circle_members')
+        .from('social_circle_members')
         .delete()
         .eq('circle_id', circleId)
         .eq('user_id', defaultUser.id)

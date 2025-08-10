@@ -8,10 +8,11 @@ import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useToast } from '@/components/ui/use-toast'
 import { supabase } from '../../lib/supabase'
+import React from 'react'
 
 interface PostComposerProps {
   onSubmit: (data: {
-    body: string
+    content: string
     visibility: string
     circle_id?: string
     media?: any[]
@@ -38,7 +39,7 @@ export default function PostComposer({ onSubmit, circleId }: PostComposerProps) 
     try {
       setIsSubmitting(true)
       await onSubmit({
-        body: body.trim(),
+        content: body.trim(),
         visibility,
         circle_id: circleId,
         media: []

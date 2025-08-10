@@ -8,7 +8,7 @@ export async function testSupabaseConnection() {
     
     // Test basic connection
     const { data, error } = await supabase
-      .from('posts')
+      .from('social_posts')
       .select('count', { count: 'exact', head: true })
     
     if (error) {
@@ -72,15 +72,15 @@ export async function testSupabaseAuth() {
 
 export async function testSupabaseTables() {
   const tables = [
-    'posts',
-    'circles', 
-    'circle_members',
-    'post_reactions',
-    'comments',
+    'social_posts',
+    'social_circles', 
+    'social_circle_members',
+    'social_post_reactions',
+    'social_comments',
     'threads',
     'thread_members',
     'messages',
-    'notifications'
+    'social_notifications'
   ]
   
   const results = []

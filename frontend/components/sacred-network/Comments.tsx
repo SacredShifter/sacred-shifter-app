@@ -35,17 +35,17 @@ export default function Comments({ postId }: CommentsProps) {
   const fetchComments = async () => {
     try {
       const { data, error } = await supabase
-        .from('comments')
+        .from('social_comments')
         .select(`
           *,
-          author:auth.users!comments_author_id_fkey(id, email, user_metadata)
+          author:auth.users!social_comments_author_id_fkey(id, email, user_metadata)
         `)
         .eq('post_id', postId)
         .order('created_at', { ascending: true })
 
       if (error) throw error
 
-      setComments(data || [])
+      setComments(data as any || [])
     } catch (err) {
       console.error('Failed to fetch comments:', err)
     } finally {
@@ -63,11 +63,11 @@ export default function Comments({ postId }: CommentsProps) {
       if (!user.user) throw new Error('Not authenticated')
 
       const { error } = await supabase
-        .from('comments')
+        .from('social_comments')
         .insert({
           post_id: postId,
           author_id: user.user.id,
-          body: newComment.trim()
+          content: newComment.trim()
         })
 
       if (error) throw error
@@ -96,7 +96,7 @@ export default function Comments({ postId }: CommentsProps) {
         { 
           event: 'INSERT', 
           schema: 'public', 
-          table: 'comments',
+          table: 'social_comments',
           filter: `post_id=eq.${postId}`
         },
         () => fetchComments()

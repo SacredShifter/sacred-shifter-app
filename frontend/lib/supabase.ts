@@ -5,41 +5,44 @@ import { createClient } from '@supabase/supabase-js'
 const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://your-project-ref.supabase.co'
 const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key-here'
 
-export const supabase = createClient(supabaseUrl, supabaseAnonKey)
+export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
 export type Database = {
   public: {
     Tables: {
-      circles: {
+      social_circles: {
         Row: {
           id: string
           owner_id: string
           name: string
-          slug: string | null
           description: string | null
           is_public: boolean
           created_at: string
+          updated_at: string
+          member_count: number
         }
         Insert: {
           id?: string
           owner_id: string
           name: string
-          slug?: string | null
           description?: string | null
           is_public?: boolean
           created_at?: string
+          updated_at?: string
+          member_count?: number
         }
         Update: {
           id?: string
           owner_id?: string
           name?: string
-          slug?: string | null
           description?: string | null
           is_public?: boolean
           created_at?: string
+          updated_at?: string
+          member_count?: number
         }
       }
-      circle_members: {
+      social_circle_members: {
         Row: {
           circle_id: string
           user_id: string
@@ -59,45 +62,48 @@ export type Database = {
           joined_at?: string
         }
       }
-      posts: {
+      social_posts: {
         Row: {
           id: string
           author_id: string
-          circle_id: string | null
-          body: string | null
-          content: any
+          content: string
+          media_urls: string[]
           visibility: string
-          media: any
-          ai_summary: string | null
+          reply_to_id: string | null
+          like_count: number
+          comment_count: number
+          share_count: number
           created_at: string
           updated_at: string
         }
         Insert: {
           id?: string
           author_id: string
-          circle_id?: string | null
-          body?: string | null
-          content?: any
+          content: string
+          media_urls?: string[]
           visibility?: string
-          media?: any
-          ai_summary?: string | null
+          reply_to_id?: string | null
+          like_count?: number
+          comment_count?: number
+          share_count?: number
           created_at?: string
           updated_at?: string
         }
         Update: {
           id?: string
           author_id?: string
-          circle_id?: string | null
-          body?: string | null
-          content?: any
+          content?: string
+          media_urls?: string[]
           visibility?: string
-          media?: any
-          ai_summary?: string | null
+          reply_to_id?: string | null
+          like_count?: number
+          comment_count?: number
+          share_count?: number
           created_at?: string
           updated_at?: string
         }
       }
-      post_reactions: {
+      social_post_reactions: {
         Row: {
           post_id: string
           user_id: string
@@ -117,13 +123,14 @@ export type Database = {
           created_at?: string | null
         }
       }
-      comments: {
+      social_comments: {
         Row: {
           id: string
           post_id: string
           author_id: string
-          body: string
-          content: any
+          content: string
+          like_count: number
+          reply_to_id: string | null
           created_at: string
           updated_at: string
         }
@@ -131,8 +138,9 @@ export type Database = {
           id?: string
           post_id: string
           author_id: string
-          body: string
-          content?: any
+          content: string
+          like_count?: number
+          reply_to_id?: string | null
           created_at?: string
           updated_at?: string
         }
@@ -140,26 +148,27 @@ export type Database = {
           id?: string
           post_id?: string
           author_id?: string
-          body?: string
-          content?: any
+          content?: string
+          like_count?: number
+          reply_to_id?: string | null
           created_at?: string
           updated_at?: string
         }
       }
-      follows: {
+      social_follows: {
         Row: {
           follower_id: string
-          followee_id: string
+          following_id: string
           created_at: string | null
         }
         Insert: {
           follower_id: string
-          followee_id: string
+          following_id: string
           created_at?: string | null
         }
         Update: {
           follower_id?: string
-          followee_id?: string
+          following_id?: string
           created_at?: string | null
         }
       }
@@ -241,30 +250,83 @@ export type Database = {
           reply_to_id?: string | null
         }
       }
-      notifications: {
+      social_notifications: {
         Row: {
           id: string
           user_id: string
-          kind: string
-          ref: any
+          type: string
+          actor_id: string | null
+          target_id: string | null
+          content: string | null
           is_read: boolean
           created_at: string
         }
         Insert: {
           id?: string
           user_id: string
-          kind: string
-          ref: any
+          type: string
+          actor_id?: string | null
+          target_id?: string | null
+          content?: string | null
           is_read?: boolean
           created_at?: string
         }
         Update: {
           id?: string
           user_id?: string
-          kind?: string
-          ref?: any
+          type?: string
+          actor_id?: string | null
+          target_id?: string | null
+          content?: string | null
           is_read?: boolean
           created_at?: string
+        }
+      }
+      social_profiles: {
+        Row: {
+          id: string
+          user_id: string
+          username: string
+          display_name: string
+          bio: string | null
+          avatar_url: string | null
+          location: string | null
+          website: string | null
+          follower_count: number
+          following_count: number
+          post_count: number
+          created_at: string
+          updated_at: string
+        }
+        Insert: {
+          id?: string
+          user_id: string
+          username: string
+          display_name: string
+          bio?: string | null
+          avatar_url?: string | null
+          location?: string | null
+          website?: string | null
+          follower_count?: number
+          following_count?: number
+          post_count?: number
+          created_at?: string
+          updated_at?: string
+        }
+        Update: {
+          id?: string
+          user_id?: string
+          username?: string
+          display_name?: string
+          bio?: string | null
+          avatar_url?: string | null
+          location?: string | null
+          website?: string | null
+          follower_count?: number
+          following_count?: number
+          post_count?: number
+          created_at?: string
+          updated_at?: string
         }
       }
     }

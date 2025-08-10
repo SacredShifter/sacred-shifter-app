@@ -1,3 +1,85 @@
+-- Messenger tables
+CREATE TABLE IF NOT EXISTS threads (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  is_group boolean NOT NULL DEFAULT false,
+  created_by uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  title text,
+  created_at timestamptz NOT NULL DEFAULT NOW()
+);
+
+CREATE TABLE IF NOT EXISTS thread_members (
+  thread_id uuid REFERENCES threads(id) ON DELETE CASCADE,
+  user_id uuid REFERENCES auth.users(id) ON DELETE CASCADE,
+  role text NOT NULL DEFAULT 'member' CHECK (role IN ('owner', 'admin', 'member')),
+  last_read_at timestamptz,
+  joined_at timestamptz DEFAULT NOW(),
+  PRIMARY KEY (thread_id, user_id)
+);
+
+CREATE TABLE IF NOT EXISTS messages (
+  id uuid PRIMARY KEY DEFAULT gen_random_uuid(),
+  thread_id uuid NOT NULL REFERENCES threads(id) ON DELETE CASCADE,
+  sender_id uuid REFERENCES auth.users(id) ON DELETE SET NULL,
+  body text,
+  content jsonb,
+  created_at timestamptz NOT NULL DEFAULT NOW(),
+  edited_at timestamptz,
+  reply_to_id uuid REFERENCES messages(id) ON DELETE SET NULL
+);
+
+CREATE INDEX IF NOT EXISTS idx_messages_thread_created ON messages(thread_id, created_at DESC);
+CREATE INDEX IF NOT EXISTS idx_thread_members_user ON thread_members(user_id);
+
+-- Enable RLS
+ALTER TABLE threads ENABLE ROW LEVEL SECURITY;
+ALTER TABLE thread_members ENABLE ROW LEVEL SECURITY;
+ALTER TABLE messages ENABLE ROW LEVEL SECURITY;
+
+-- Policies
+CREATE POLICY "Users can view threads they are members of"
+ON threads FOR SELECT
+USING (id IN (SELECT thread_id FROM thread_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can create threads"
+ON threads FOR INSERT
+WITH CHECK (created_by = auth.uid());
+
+CREATE POLICY "Thread owners/admins can update threads"
+ON threads FOR UPDATE
+USING (id IN (SELECT thread_id FROM thread_members WHERE user_id = auth.uid() AND role IN ('owner', 'admin')));
+
+CREATE POLICY "Users can view members of their threads"
+ON thread_members FOR SELECT
+USING (thread_id IN (SELECT thread_id FROM thread_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can insert themselves into threads"
+ON thread_members FOR INSERT
+WITH CHECK (user_id = auth.uid());
+
+CREATE POLICY "Users can update their own membership"
+ON thread_members FOR UPDATE
+USING (user_id = auth.uid());
+
+CREATE POLICY "Users can delete their own membership"
+ON thread_members FOR DELETE
+USING (user_id = auth.uid());
+
+CREATE POLICY "Users can view messages in their threads"
+ON messages FOR SELECT
+USING (thread_id IN (SELECT thread_id FROM thread_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can send messages in their threads"
+ON messages FOR INSERT
+WITH CHECK (sender_id = auth.uid() AND thread_id IN (SELECT thread_id FROM thread_members WHERE user_id = auth.uid()));
+
+CREATE POLICY "Users can edit their own messages"
+ON messages FOR UPDATE
+USING (sender_id = auth.uid());
+
+CREATE POLICY "Users can delete their own messages"
+ON messages FOR DELETE
+USING (sender_id = auth.uid());
+
 -- Messenger API functions for Sacred Network
 -- These functions provide the core messaging functionality
 
@@ -197,6 +279,32 @@ BEGIN
     WHERE tm2.thread_id = t.id
   ) member_counts ON true
   ORDER BY COALESCE(lm.created_at, t.created_at) DESC;
+END$$;
+
+-- 9) Send message to thread
+CREATE OR REPLACE FUNCTION api_send_message(p_thread_id uuid, p_body text, p_content jsonb DEFAULT NULL, p_reply_to_id uuid DEFAULT NULL)
+RETURNS uuid
+LANGUAGE plpgsql
+SECURITY INVOKER
+AS $$
+DECLARE
+  mid uuid;
+  me uuid := auth.uid();
+BEGIN
+  -- Check if user is a member of the thread
+  IF NOT EXISTS(
+    SELECT 1 FROM thread_members
+    WHERE thread_id = p_thread_id
+    AND user_id = me
+  ) THEN
+    RAISE EXCEPTION 'not a member of this thread';
+  END IF;
+
+  INSERT INTO messages(thread_id, sender_id, body, content, reply_to_id)
+  VALUES (p_thread_id, me, p_body, p_content, p_reply_to_id)
+  RETURNING id INTO mid;
+
+  RETURN mid;
 END$$;
 
 -- Create Aura bot user if it doesn't exist
