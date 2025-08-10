@@ -1,13 +1,16 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, MessageCircle, Plus, Send } from 'lucide-react';
+import { Users, MessageCircle, Plus, Send, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
 import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import backend from '~backend/client';
+import { useModuleStatus } from '../hooks/useModuleHealth';
+import ModuleHealthIndicator from '../components/ModuleHealthIndicator';
 import AIAssistant from '../components/AIAssistant';
 
 export default function CommunityPage() {
@@ -16,15 +19,18 @@ export default function CommunityPage() {
   const [isCreateDialogOpen, setIsCreateDialogOpen] = useState(false);
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isHealthy, isDegraded } = useModuleStatus('community');
 
   const { data: sharedLearnings, isLoading } = useQuery({
     queryKey: ['shared-learnings'],
     queryFn: () => backend.community.listSharedLearnings(),
+    enabled: isHealthy || isDegraded,
   });
 
   const { data: messages } = useQuery({
     queryKey: ['messages'],
     queryFn: () => backend.community.listMessages(),
+    enabled: isHealthy || isDegraded,
   });
 
   const createLearningMutation = useMutation({
@@ -93,13 +99,29 @@ export default function CommunityPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent mb-4">
-          Community & Connection Hub
-        </h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-blue-600 to-cyan-600 bg-clip-text text-transparent">
+            Community & Connection Hub
+          </h1>
+          <ModuleHealthIndicator moduleName="community" showLabel size="md" />
+        </div>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Share your insights, connect with fellow seekers, and grow together in consciousness.
         </p>
       </div>
+
+      {/* Module Status Alert */}
+      {!isHealthy && (
+        <Alert variant={isDegraded ? "default" : "destructive"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {isDegraded 
+              ? "Community module is experiencing some issues. Some features may be limited."
+              : "Community module is currently unavailable. Please try again later."
+            }
+          </AlertDescription>
+        </Alert>
+      )}
 
       <div className="grid grid-cols-1 lg:grid-cols-3 gap-8">
         <div className="lg:col-span-2 space-y-6">
@@ -107,7 +129,10 @@ export default function CommunityPage() {
             <h2 className="text-2xl font-bold text-gray-900">Shared Learnings</h2>
             <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
               <DialogTrigger asChild>
-                <Button className="bg-blue-600 hover:bg-blue-700">
+                <Button 
+                  className="bg-blue-600 hover:bg-blue-700"
+                  disabled={!isHealthy && !isDegraded}
+                >
                   <Plus className="w-4 h-4 mr-2" />
                   Share Learning
                 </Button>
@@ -154,6 +179,26 @@ export default function CommunityPage() {
                 </CardContent>
               </Card>
             ))}
+            
+            {(!sharedLearnings?.learnings || sharedLearnings.learnings.length === 0) && (
+              <Card className="border-dashed border-2 border-blue-300 bg-blue-50">
+                <CardContent className="flex flex-col items-center justify-center py-16">
+                  <Users className="w-16 h-16 text-blue-400 mb-4" />
+                  <h3 className="text-xl font-medium text-blue-900 mb-2">No Shared Learnings Yet</h3>
+                  <p className="text-blue-600 text-center mb-6 max-w-md">
+                    Be the first to share your wisdom and insights with the Sacred Shifter community.
+                  </p>
+                  <Button 
+                    onClick={() => setIsCreateDialogOpen(true)} 
+                    className="bg-blue-600 hover:bg-blue-700"
+                    disabled={!isHealthy && !isDegraded}
+                  >
+                    <Plus className="w-4 h-4 mr-2" />
+                    Share First Learning
+                  </Button>
+                </CardContent>
+              </Card>
+            )}
           </div>
         </div>
 

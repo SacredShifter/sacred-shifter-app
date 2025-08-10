@@ -1,12 +1,15 @@
 import { useState } from 'react';
 import { useQuery } from '@tanstack/react-query';
-import { Brain, Clock, TrendingUp, Calendar, BarChart3, Play, Pause } from 'lucide-react';
+import { Brain, Clock, TrendingUp, Calendar, BarChart3, Play, Pause, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Badge } from '@/components/ui/badge';
 import { Progress } from '@/components/ui/progress';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import backend from '~backend/client';
 import { useMeditation } from '../contexts/MeditationContext';
+import { useModuleStatus } from '../hooks/useModuleHealth';
+import ModuleHealthIndicator from '../components/ModuleHealthIndicator';
 import AIAssistant from '../components/AIAssistant';
 
 function formatDuration(seconds: number): string {
@@ -29,15 +32,18 @@ function formatTime(seconds: number): string {
 export default function MeditationPage() {
   const [selectedPeriod, setSelectedPeriod] = useState<'week' | 'month' | 'all'>('week');
   const { currentSession, sessionDuration, isPlaying, startMeditationSession, endMeditationSession } = useMeditation();
+  const { isHealthy, isDegraded } = useModuleStatus('meditation');
 
   const { data: sessions, isLoading: sessionsLoading } = useQuery({
     queryKey: ['meditation-sessions'],
     queryFn: () => backend.meditation.listSessions(),
+    enabled: isHealthy || isDegraded,
   });
 
   const { data: analytics, isLoading: analyticsLoading } = useQuery({
     queryKey: ['meditation-analytics'],
     queryFn: () => backend.meditation.getAnalytics(),
+    enabled: isHealthy || isDegraded,
   });
 
   const hasActiveSession = currentSession && !currentSession.completed;
@@ -88,13 +94,29 @@ export default function MeditationPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-          Meditation Center
-        </h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Meditation Center
+          </h1>
+          <ModuleHealthIndicator moduleName="meditation" showLabel size="md" />
+        </div>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Track your meditation journey, analyze your progress, and deepen your practice.
         </p>
       </div>
+
+      {/* Module Status Alert */}
+      {!isHealthy && (
+        <Alert variant={isDegraded ? "default" : "destructive"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {isDegraded 
+              ? "Meditation module is experiencing some issues. Some features may be limited."
+              : "Meditation module is currently unavailable. Please try again later."
+            }
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Active Session Card */}
       {hasActiveSession && (
@@ -118,6 +140,7 @@ export default function MeditationPage() {
               <Button
                 onClick={() => endMeditationSession()}
                 className="bg-green-600 hover:bg-green-700"
+                disabled={!isHealthy && !isDegraded}
               >
                 End Session
               </Button>
@@ -140,7 +163,7 @@ export default function MeditationPage() {
                 variant="outline"
                 onClick={() => handleQuickStart(soundscape.id)}
                 className="h-16 flex flex-col items-center justify-center space-y-1"
-                disabled={!!hasActiveSession}
+                disabled={!!hasActiveSession || (!isHealthy && !isDegraded)}
               >
                 <div className={`w-4 h-4 rounded-full ${soundscape.color}`}></div>
                 <span className="text-sm">{soundscape.name}</span>

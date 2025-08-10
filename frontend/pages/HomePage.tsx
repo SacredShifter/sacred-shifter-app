@@ -2,8 +2,10 @@ import { useQuery } from '@tanstack/react-query';
 import { Rss, Users, BookOpen, Database, Brain, Play, Book, Heart } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
+import { Badge } from '@/components/ui/badge';
 import backend from '~backend/client';
 import AIAssistant from '../components/AIAssistant';
+import ModuleHealthIndicator from '../components/ModuleHealthIndicator';
 
 const modules = [
   {
@@ -12,7 +14,8 @@ const modules = [
     icon: Rss,
     href: '/feed',
     action: 'Feed the Flame Within',
-    gradient: 'from-purple-500 to-indigo-600'
+    gradient: 'from-purple-500 to-indigo-600',
+    module: 'community'
   },
   {
     title: 'Sacred Circles',
@@ -20,7 +23,8 @@ const modules = [
     icon: Users,
     href: '/circles',
     action: 'Step Into the Shared Field',
-    gradient: 'from-blue-500 to-cyan-600'
+    gradient: 'from-blue-500 to-cyan-600',
+    module: 'community'
   },
   {
     title: 'Mirror Journal',
@@ -28,7 +32,8 @@ const modules = [
     icon: BookOpen,
     href: '/journal',
     action: 'Witness Your Soul Unfold',
-    gradient: 'from-green-500 to-emerald-600'
+    gradient: 'from-green-500 to-emerald-600',
+    module: 'journal'
   },
   {
     title: 'Resonant Codex',
@@ -36,7 +41,8 @@ const modules = [
     icon: Database,
     href: '/codex',
     action: 'Anchor the Synchronicities',
-    gradient: 'from-purple-600 to-pink-600'
+    gradient: 'from-purple-600 to-pink-600',
+    module: 'codex'
   },
   {
     title: 'Meditation Center',
@@ -44,7 +50,8 @@ const modules = [
     icon: Brain,
     href: '/meditation',
     action: 'Expand Your Awareness',
-    gradient: 'from-indigo-500 to-purple-600'
+    gradient: 'from-indigo-500 to-purple-600',
+    module: 'meditation'
   },
   {
     title: 'YouTube Library',
@@ -88,6 +95,11 @@ export default function HomePage() {
     queryFn: () => backend.codex.listEntries(),
   });
 
+  const { data: communityLearnings } = useQuery({
+    queryKey: ['shared-learnings'],
+    queryFn: () => backend.community.listSharedLearnings(),
+  });
+
   const homeContextData = {
     user: {
       username: "Sacred Seeker",
@@ -96,7 +108,8 @@ export default function HomePage() {
     overview: {
       journal_entries_count: journalEntries?.entries.length || 0,
       meditation_sessions: meditationAnalytics?.completed_sessions || 0,
-      codex_entries_count: codexEntries?.entries.length || 0
+      codex_entries_count: codexEntries?.entries.length || 0,
+      community_learnings: communityLearnings?.learnings.length || 0
     },
     recent_activity: {
       recent_entries: journalEntries?.entries.slice(0, 3).map(e => e.title) || [],
@@ -125,6 +138,26 @@ export default function HomePage() {
               Welcome, Sacred Seeker
             </p>
           </div>
+
+          {/* Quick Stats */}
+          <div className="grid grid-cols-2 md:grid-cols-4 gap-4 max-w-2xl mx-auto mb-8">
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">{journalEntries?.entries.length || 0}</div>
+              <div className="text-sm text-purple-200">Journal Entries</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">{meditationAnalytics?.completed_sessions || 0}</div>
+              <div className="text-sm text-purple-200">Meditations</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">{codexEntries?.entries.length || 0}</div>
+              <div className="text-sm text-purple-200">Codex Entries</div>
+            </div>
+            <div className="bg-white/10 backdrop-blur-lg rounded-lg p-4">
+              <div className="text-2xl font-bold text-white">{communityLearnings?.learnings.length || 0}</div>
+              <div className="text-sm text-purple-200">Shared Learnings</div>
+            </div>
+          </div>
         </div>
 
         {/* Modules Grid */}
@@ -137,8 +170,13 @@ export default function HomePage() {
               >
                 <div className={`absolute inset-0 bg-gradient-to-br ${module.gradient} opacity-20 group-hover:opacity-30 transition-opacity`} />
                 <CardHeader className="relative z-10 pb-4">
-                  <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-white/20 mb-4">
-                    <module.icon className="w-6 h-6 text-white" />
+                  <div className="flex items-center justify-between mb-4">
+                    <div className="flex items-center justify-center w-12 h-12 rounded-lg bg-white/20">
+                      <module.icon className="w-6 h-6 text-white" />
+                    </div>
+                    {'module' in module && (
+                      <ModuleHealthIndicator moduleName={module.module} />
+                    )}
                   </div>
                   <CardTitle className="text-lg text-white group-hover:text-purple-100 transition-colors">
                     {module.title}

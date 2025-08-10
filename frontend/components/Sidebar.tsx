@@ -6,7 +6,7 @@ import ModuleHealthIndicator from './ModuleHealthIndicator';
 const coreNavigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Feed', href: '/feed', icon: Rss, module: 'community' },
-  { name: 'Messages', href: '/messages', icon: Users, module: 'community' },
+  { name: 'Community', href: '/community', icon: Users, module: 'community' },
   { name: 'Sacred Network', href: '/network', icon: Network },
 ];
 

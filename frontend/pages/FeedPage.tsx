@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Rss, Plus, Heart, MessageCircle, Share, Filter } from 'lucide-react';
+import { Rss, Plus, Heart, MessageCircle, Share, Filter, AlertCircle } from 'lucide-react';
 import { Card, CardContent, CardDescription, CardHeader, CardTitle } from '@/components/ui/card';
 import { Button } from '@/components/ui/button';
 import { Textarea } from '@/components/ui/textarea';
@@ -8,8 +8,11 @@ import { Input } from '@/components/ui/input';
 import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
 import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
 import { Badge } from '@/components/ui/badge';
+import { Alert, AlertDescription } from '@/components/ui/alert';
 import { useToast } from '@/components/ui/use-toast';
 import backend from '~backend/client';
+import { useModuleStatus } from '../hooks/useModuleHealth';
+import ModuleHealthIndicator from '../components/ModuleHealthIndicator';
 import AIAssistant from '../components/AIAssistant';
 
 export default function FeedPage() {
@@ -19,10 +22,12 @@ export default function FeedPage() {
   const [filterCategory, setFilterCategory] = useState('all');
   const { toast } = useToast();
   const queryClient = useQueryClient();
+  const { isHealthy, isDegraded } = useModuleStatus('community');
 
   const { data: sharedLearnings, isLoading } = useQuery({
     queryKey: ['shared-learnings'],
     queryFn: () => backend.community.listSharedLearnings(),
+    enabled: isHealthy || isDegraded,
   });
 
   const createPostMutation = useMutation({
@@ -96,13 +101,29 @@ export default function FeedPage() {
   return (
     <div className="space-y-8">
       <div className="text-center">
-        <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent mb-4">
-          Sacred Feed
-        </h1>
+        <div className="flex items-center justify-center space-x-2 mb-4">
+          <h1 className="text-4xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
+            Sacred Feed
+          </h1>
+          <ModuleHealthIndicator moduleName="community" showLabel size="md" />
+        </div>
         <p className="text-lg text-gray-600 max-w-2xl mx-auto">
           Your personalized stream of consciousness transformation content. Feed the flame within.
         </p>
       </div>
+
+      {/* Module Status Alert */}
+      {!isHealthy && (
+        <Alert variant={isDegraded ? "default" : "destructive"}>
+          <AlertCircle className="h-4 w-4" />
+          <AlertDescription>
+            {isDegraded 
+              ? "Community module is experiencing some issues. Some features may be limited."
+              : "Community module is currently unavailable. Please try again later."
+            }
+          </AlertDescription>
+        </Alert>
+      )}
 
       {/* Feed Controls */}
       <div className="flex items-center justify-between">
@@ -124,7 +145,10 @@ export default function FeedPage() {
 
         <Dialog open={isCreateDialogOpen} onOpenChange={setIsCreateDialogOpen}>
           <DialogTrigger asChild>
-            <Button className="bg-purple-600 hover:bg-purple-700">
+            <Button 
+              className="bg-purple-600 hover:bg-purple-700"
+              disabled={!isHealthy && !isDegraded}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Share Insight
             </Button>
@@ -228,7 +252,11 @@ export default function FeedPage() {
             <p className="text-purple-600 text-center mb-6 max-w-md">
               Begin sharing your spiritual insights, synchronicities, and transformative experiences to feed the collective flame.
             </p>
-            <Button onClick={() => setIsCreateDialogOpen(true)} className="bg-purple-600 hover:bg-purple-700">
+            <Button 
+              onClick={() => setIsCreateDialogOpen(true)} 
+              className="bg-purple-600 hover:bg-purple-700"
+              disabled={!isHealthy && !isDegraded}
+            >
               <Plus className="w-4 h-4 mr-2" />
               Share Your First Insight
             </Button>
