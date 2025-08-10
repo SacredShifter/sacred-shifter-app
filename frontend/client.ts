@@ -623,8 +623,10 @@ export namespace meditation {
  * Import the endpoint handlers to derive the types for the client.
  */
 import {
+    getRecordingUploadUrl as api_messenger_calls_getRecordingUploadUrl,
     initiateCall as api_messenger_calls_initiateCall,
     listCallHistory as api_messenger_calls_listCallHistory,
+    saveRecordingUrl as api_messenger_calls_saveRecordingUrl,
     updateCallStatus as api_messenger_calls_updateCallStatus
 } from "~backend/messenger/calls";
 import {
@@ -659,6 +661,7 @@ export namespace messenger {
             this.edit = this.edit.bind(this)
             this.events = this.events.bind(this)
             this.get = this.get.bind(this)
+            this.getRecordingUploadUrl = this.getRecordingUploadUrl.bind(this)
             this.getUploadUrl = this.getUploadUrl.bind(this)
             this.initiateCall = this.initiateCall.bind(this)
             this.leave = this.leave.bind(this)
@@ -667,6 +670,7 @@ export namespace messenger {
             this.listThreads = this.listThreads.bind(this)
             this.markAsRead = this.markAsRead.bind(this)
             this.rename = this.rename.bind(this)
+            this.saveRecordingUrl = this.saveRecordingUrl.bind(this)
             this.send = this.send.bind(this)
             this.signaling = this.signaling.bind(this)
             this.start = this.start.bind(this)
@@ -727,6 +731,20 @@ export namespace messenger {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}`, {method: "GET", body: undefined})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_threads_get>
+        }
+
+        /**
+         * Generates a signed URL for uploading a call recording.
+         */
+        public async getRecordingUploadUrl(params: RequestType<typeof api_messenger_calls_getRecordingUploadUrl>): Promise<ResponseType<typeof api_messenger_calls_getRecordingUploadUrl>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                contentType: params.contentType,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/calls/${encodeURIComponent(params.callId)}/recording-url`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_calls_getRecordingUploadUrl>
         }
 
         /**
@@ -798,6 +816,18 @@ export namespace messenger {
             }
 
             await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/rename`, {method: "PUT", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Saves the URL of a call recording.
+         */
+        public async saveRecordingUrl(params: RequestType<typeof api_messenger_calls_saveRecordingUrl>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                recordingUrl: params.recordingUrl,
+            }
+
+            await this.baseClient.callTypedAPI(`/messenger/calls/${encodeURIComponent(params.callId)}/recording`, {method: "PUT", body: JSON.stringify(body)})
         }
 
         /**

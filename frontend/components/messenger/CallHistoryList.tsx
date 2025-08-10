@@ -1,7 +1,8 @@
 import { useQuery } from '@tanstack/react-query'
-import { Phone, Video, PhoneIncoming, PhoneMissed, PhoneOff } from 'lucide-react'
+import { Phone, Video, PhoneIncoming, PhoneMissed, PhoneOff, Download } from 'lucide-react'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { Badge } from '@/components/ui/badge'
+import { Button } from '@/components/ui/button'
 import backend from '~backend/client'
 import { formatDistanceToNow } from 'date-fns'
 
@@ -72,6 +73,19 @@ export default function CallHistoryList() {
               <Badge variant="outline" className="mt-1">
                 {Math.floor(call.duration_seconds / 60)}m {call.duration_seconds % 60}s
               </Badge>
+            )}
+            {call.recording_url && (
+              <Button
+                variant="ghost"
+                size="sm"
+                asChild
+                className="mt-1"
+              >
+                <a href={call.recording_url} target="_blank" rel="noopener noreferrer">
+                  <Download className="w-3 h-3 mr-1" />
+                  Recording
+                </a>
+              </Button>
             )}
           </div>
         </div>

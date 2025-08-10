@@ -67,6 +67,8 @@ export interface Call {
   started_at: Date | null;
   ended_at: Date | null;
   duration_seconds: number | null;
+  recording_url: string | null;
+  session_type: string;
 }
 
 export interface SignalingMessage {

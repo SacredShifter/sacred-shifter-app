@@ -12,13 +12,16 @@ interface CallContextType {
   localStream: MediaStream | null
   remoteStream: MediaStream | null
   isMuted: boolean
-  isVideoEnabled: boolean
-  startCall: (receiverId: string, type: 'voice' | 'video', threadId: string) => Promise<void>
+  isVideoEnabled: boolean;
+  isRecording: boolean;
+  startCall: (receiverId: string, type: 'voice' | 'video', threadId: string, sessionType?: string) => Promise<void>
   answerCall: () => Promise<void>
   declineCall: () => Promise<void>
   endCall: () => Promise<void>
   toggleMute: () => void
-  toggleVideo: () => void
+  toggleVideo: () => void;
+  startRecording: () => void;
+  stopRecording: () => Promise<void>;
 }
 
 const CallContext = createContext<CallContextType | undefined>(undefined)
@@ -71,6 +74,7 @@ export function CallProvider({ children }: { children: ReactNode }) {
   const [incomingCall, setIncomingCall] = useState<Call | null>(null)
   const [isMuted, setIsMuted] = useState(false)
   const [isVideoEnabled, setIsVideoEnabled] = useState(true)
+  const [isRecording, setIsRecording] = useState(false);
 
   const {
     localStream,
@@ -79,13 +83,21 @@ export function CallProvider({ children }: { children: ReactNode }) {
     closePeerConnection,
     toggleMute: toggleWebRTCMute,
     toggleVideo: toggleWebRTCVideo,
+    startRecording: startWebRTCRecording,
+    stopRecording: stopWebRTCRecording,
   } = useWebRTC(activeCall?.id || incomingCall?.id || null)
 
   useGlobalCallEvents(setIncomingCall, setActiveCall, setCallState)
 
-  const startCall = async (receiverId: string, type: 'voice' | 'video', threadId: string) => {
+  const startCall = async (receiverId: string, type: 'voice' | 'video', threadId: string, sessionType: string = 'standard') => {
     try {
-      const { call } = await backend.messenger.initiateCall({ receiverId, type, threadId })
+      let finalThreadId = threadId;
+      if (!finalThreadId) {
+        const { threadId: newThreadId } = await backend.messenger.start({ memberIds: [receiverId] });
+        finalThreadId = newThreadId;
+      }
+
+      const { call } = await backend.messenger.initiateCall({ receiverId, type, threadId: finalThreadId, sessionType })
       setActiveCall(call)
       setCallState('outgoing')
       await createPeerConnection(true, type)
@@ -122,6 +134,9 @@ export function CallProvider({ children }: { children: ReactNode }) {
     const callToEnd = activeCall || incomingCall
     if (!callToEnd) return
     try {
+      if (isRecording) {
+        await stopRecording();
+      }
       await backend.messenger.updateCallStatus({ callId: callToEnd.id, status: 'ended' })
       setActiveCall(null)
       setIncomingCall(null)
@@ -142,6 +157,44 @@ export function CallProvider({ children }: { children: ReactNode }) {
     toggleWebRTCVideo()
   }, [toggleWebRTCVideo])
 
+  const startRecording = useCallback(() => {
+    if (activeCall) {
+      startWebRTCRecording();
+      setIsRecording(true);
+    }
+  }, [activeCall, startWebRTCRecording]);
+
+  const stopRecording = useCallback(async () => {
+    if (activeCall) {
+      const blob = await stopWebRTCRecording();
+      if (blob) {
+        try {
+          // Get upload URL
+          const { uploadUrl, publicUrl } = await backend.messenger.getRecordingUploadUrl({
+            callId: activeCall.id,
+            contentType: blob.type,
+          });
+
+          // Upload
+          await fetch(uploadUrl, {
+            method: 'PUT',
+            body: blob,
+            headers: { 'Content-Type': blob.type },
+          });
+
+          // Save URL
+          await backend.messenger.saveRecordingUrl({
+            callId: activeCall.id,
+            recordingUrl: publicUrl,
+          });
+        } catch (error) {
+          console.error("Failed to upload recording:", error);
+        }
+      }
+      setIsRecording(false);
+    }
+  }, [activeCall, stopWebRTCRecording]);
+
   const value = {
     callState,
     activeCall,
@@ -150,12 +203,15 @@ export function CallProvider({ children }: { children: ReactNode }) {
     remoteStream,
     isMuted,
     isVideoEnabled,
+    isRecording,
     startCall,
     answerCall,
     declineCall,
     endCall,
     toggleMute,
     toggleVideo,
+    startRecording,
+    stopRecording,
   }
 
   return <CallContext.Provider value={value}>{children}</CallContext.Provider>

@@ -13,6 +13,8 @@ export function useWebRTC(callId: string | null) {
   const [remoteStream, setRemoteStream] = useState<MediaStream | null>(null)
   const peerConnectionRef = useRef<RTCPeerConnection | null>(null)
   const signalingStreamRef = useRef<any>(null)
+  const mediaRecorderRef = useRef<MediaRecorder | null>(null);
+  const recordedChunksRef = useRef<Blob[]>([]);
 
   const closePeerConnection = useCallback(() => {
     if (peerConnectionRef.current) {
@@ -110,6 +112,40 @@ export function useWebRTC(callId: string | null) {
     }
   }, [localStream])
 
+  const startRecording = useCallback(() => {
+    if (remoteStream) {
+      const options = { mimeType: 'video/webm; codecs=vp9' };
+      const mediaRecorder = new MediaRecorder(remoteStream, options);
+      mediaRecorderRef.current = mediaRecorder;
+      recordedChunksRef.current = [];
+
+      mediaRecorder.ondataavailable = (event) => {
+        if (event.data.size > 0) {
+          recordedChunksRef.current.push(event.data);
+        }
+      };
+
+      mediaRecorder.start();
+    }
+  }, [remoteStream]);
+
+  const stopRecording = useCallback((): Promise<Blob | null> => {
+    return new Promise((resolve) => {
+      if (mediaRecorderRef.current && mediaRecorderRef.current.state === 'recording') {
+        mediaRecorderRef.current.onstop = () => {
+          const blob = new Blob(recordedChunksRef.current, {
+            type: 'video/webm',
+          });
+          recordedChunksRef.current = [];
+          resolve(blob);
+        };
+        mediaRecorderRef.current.stop();
+      } else {
+        resolve(null);
+      }
+    });
+  }, []);
+
   return {
     localStream,
     remoteStream,
@@ -117,5 +153,7 @@ export function useWebRTC(callId: string | null) {
     closePeerConnection,
     toggleMute,
     toggleVideo,
+    startRecording,
+    stopRecording,
   }
 }
