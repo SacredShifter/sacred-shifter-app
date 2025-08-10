@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings, Network } from 'lucide-react';
+import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings, Network, TestTube } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ModuleHealthIndicator from './ModuleHealthIndicator';
 
@@ -29,6 +29,10 @@ const account = [
   { name: 'Profile', href: '/profile', icon: User },
   { name: 'Support the Shift', href: '/support', icon: Heart },
   { name: 'Settings', href: '/settings', icon: Settings },
+];
+
+const development = [
+  { name: 'Supabase Test', href: '/supabase-test', icon: TestTube },
 ];
 
 export default function Sidebar() {
@@ -86,6 +90,7 @@ export default function Sidebar() {
           {renderNavSection('Media', media)}
           {renderNavSection('Knowledge', knowledge)}
           {renderNavSection('Account', account)}
+          {process.env.NODE_ENV === 'development' && renderNavSection('Development', development)}
         </div>
 
         <div className="p-4 border-t border-purple-200">
