@@ -1,5 +1,5 @@
 import { useState, useRef, useEffect } from 'react'
-import { Send, Paperclip, Smile, MoreVertical, Reply, Edit, Trash, Info } from 'lucide-react'
+import { Send, Paperclip, Smile, MoreVertical, Reply, Edit, Trash, Info, Phone, Video } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
@@ -11,6 +11,7 @@ import MessageInput from './MessageInput'
 import AttachmentPreview from './AttachmentPreview'
 import { formatDistanceToNow } from 'date-fns'
 import { AURA_BOT_ID } from '../../config'
+import { useCall } from '../../contexts/CallContext'
 
 interface ChatViewProps {
   threadId: string
@@ -36,6 +37,7 @@ export default function ChatView({ threadId, onShowDetails }: ChatViewProps) {
   } = useChat(threadId)
   
   const { typingMembers } = usePresence(threadId)
+  const { startCall } = useCall()
 
   const scrollToBottom = () => {
     messagesEndRef.current?.scrollIntoView({ behavior: 'smooth' })
@@ -119,6 +121,7 @@ export default function ChatView({ threadId, onShowDetails }: ChatViewProps) {
   }
 
   const groupedMessages = groupMessagesByDate(messages)
+  const otherMember = members.find(m => m.user_id !== '00000000-0000-0000-0000-000000000000');
 
   if (isLoading) {
     return (
@@ -147,9 +150,21 @@ export default function ChatView({ threadId, onShowDetails }: ChatViewProps) {
             )}
           </div>
         </div>
-        <Button variant="ghost" size="sm" onClick={onShowDetails}>
-          <Info className="w-4 h-4" />
-        </Button>
+        <div className="flex items-center space-x-2">
+          {otherMember && (
+            <>
+              <Button variant="ghost" size="sm" onClick={() => startCall(otherMember.user_id, 'voice', threadId)}>
+                <Phone className="w-4 h-4" />
+              </Button>
+              <Button variant="ghost" size="sm" onClick={() => startCall(otherMember.user_id, 'video', threadId)}>
+                <Video className="w-4 h-4" />
+              </Button>
+            </>
+          )}
+          <Button variant="ghost" size="sm" onClick={onShowDetails}>
+            <Info className="w-4 h-4" />
+          </Button>
+        </div>
       </div>
 
       {/* Messages */}

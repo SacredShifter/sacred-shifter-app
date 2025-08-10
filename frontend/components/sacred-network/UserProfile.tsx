@@ -1,5 +1,5 @@
 import { useState } from 'react'
-import { MapPin, Link as LinkIcon, Calendar, Edit, Users, Heart, MessageCircle, Share, Settings, UserPlus, UserMinus } from 'lucide-react'
+import { MapPin, Link as LinkIcon, Calendar, Edit, Users, Heart, MessageCircle, Share, Settings, UserPlus, UserMinus, Phone, Video } from 'lucide-react'
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card'
 import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
@@ -14,6 +14,7 @@ import { useToast } from '@/components/ui/use-toast'
 import backend from '~backend/client'
 import { formatDistanceToNow } from 'date-fns'
 import type { SocialProfile, SocialPost } from '~backend/social/types'
+import { useCall } from '../../contexts/CallContext'
 
 interface UserProfileProps {
   userId: string
@@ -33,6 +34,7 @@ export default function UserProfile({ userId, isOwnProfile = false }: UserProfil
   })
   const { toast } = useToast()
   const queryClient = useQueryClient()
+  const { startCall } = useCall()
 
   const { data: profile, isLoading: profileLoading } = useQuery({
     queryKey: ['user-profile', userId],
@@ -285,9 +287,18 @@ export default function UserProfile({ userId, isOwnProfile = false }: UserProfil
                     <Button 
                       variant="outline"
                       className="border-purple-400 text-purple-300 hover:bg-purple-800/50"
+                      onClick={() => startCall(profile.user_id, 'voice', '')}
                     >
-                      <MessageCircle className="w-4 h-4 mr-2" />
-                      Message
+                      <Phone className="w-4 h-4 mr-2" />
+                      Voice Call
+                    </Button>
+                    <Button 
+                      variant="outline"
+                      className="border-purple-400 text-purple-300 hover:bg-purple-800/50"
+                      onClick={() => startCall(profile.user_id, 'video', '')}
+                    >
+                      <Video className="w-4 h-4 mr-2" />
+                      Video Call
                     </Button>
                     <Button 
                       onClick={handleFollow}

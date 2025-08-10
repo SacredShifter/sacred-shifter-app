@@ -623,21 +623,29 @@ export namespace meditation {
  * Import the endpoint handlers to derive the types for the client.
  */
 import {
+    initiateCall as api_messenger_calls_initiateCall,
+    listCallHistory as api_messenger_calls_listCallHistory,
+    updateCallStatus as api_messenger_calls_updateCallStatus
+} from "~backend/messenger/calls";
+import {
     del as api_messenger_messages_del,
     edit as api_messenger_messages_edit,
     listMessages as api_messenger_messages_listMessages,
     markAsRead as api_messenger_messages_markAsRead,
     send as api_messenger_messages_send
 } from "~backend/messenger/messages";
+import { signaling as api_messenger_signaling_signaling } from "~backend/messenger/signaling";
 import { events as api_messenger_stream_events } from "~backend/messenger/stream";
 import {
     addMembers as api_messenger_threads_addMembers,
+    get as api_messenger_threads_get,
     leave as api_messenger_threads_leave,
     listThreads as api_messenger_threads_listThreads,
     rename as api_messenger_threads_rename,
     start as api_messenger_threads_start
 } from "~backend/messenger/threads";
 import { getUploadUrl as api_messenger_upload_getUploadUrl } from "~backend/messenger/upload";
+import { userEvents as api_messenger_user_events_userEvents } from "~backend/messenger/user_events";
 
 export namespace messenger {
 
@@ -650,14 +658,20 @@ export namespace messenger {
             this.del = this.del.bind(this)
             this.edit = this.edit.bind(this)
             this.events = this.events.bind(this)
+            this.get = this.get.bind(this)
             this.getUploadUrl = this.getUploadUrl.bind(this)
+            this.initiateCall = this.initiateCall.bind(this)
             this.leave = this.leave.bind(this)
+            this.listCallHistory = this.listCallHistory.bind(this)
             this.listMessages = this.listMessages.bind(this)
             this.listThreads = this.listThreads.bind(this)
             this.markAsRead = this.markAsRead.bind(this)
             this.rename = this.rename.bind(this)
             this.send = this.send.bind(this)
+            this.signaling = this.signaling.bind(this)
             this.start = this.start.bind(this)
+            this.updateCallStatus = this.updateCallStatus.bind(this)
+            this.userEvents = this.userEvents.bind(this)
         }
 
         /**
@@ -707,6 +721,15 @@ export namespace messenger {
         }
 
         /**
+         * Gets a single thread by ID.
+         */
+        public async get(params: { threadId: string }): Promise<ResponseType<typeof api_messenger_threads_get>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_threads_get>
+        }
+
+        /**
          * Generates a signed URL for uploading a file.
          */
         public async getUploadUrl(params: RequestType<typeof api_messenger_upload_getUploadUrl>): Promise<ResponseType<typeof api_messenger_upload_getUploadUrl>> {
@@ -716,10 +739,28 @@ export namespace messenger {
         }
 
         /**
+         * Initiates a call.
+         */
+        public async initiateCall(params: RequestType<typeof api_messenger_calls_initiateCall>): Promise<ResponseType<typeof api_messenger_calls_initiateCall>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/calls/initiate`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_calls_initiateCall>
+        }
+
+        /**
          * Leaves a thread.
          */
         public async leave(params: { threadId: string }): Promise<void> {
             await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/members/self`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Lists call history for the current user.
+         */
+        public async listCallHistory(): Promise<ResponseType<typeof api_messenger_calls_listCallHistory>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/calls/history`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_calls_listCallHistory>
         }
 
         /**
@@ -769,12 +810,45 @@ export namespace messenger {
         }
 
         /**
+         * WebRTC signaling stream
+         */
+        public async signaling(params: RequestType<typeof api_messenger_signaling_signaling>): Promise<StreamInOut<StreamRequest<typeof api_messenger_signaling_signaling>, StreamResponse<typeof api_messenger_signaling_signaling>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                callId: params.callId,
+            })
+
+            return await this.baseClient.createStreamInOut(`/messenger/signaling`, {query})
+        }
+
+        /**
          * Starts a new thread.
          */
         public async start(params: RequestType<typeof api_messenger_threads_start>): Promise<ResponseType<typeof api_messenger_threads_start>> {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/messenger/threads`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_threads_start>
+        }
+
+        /**
+         * Updates the status of a call.
+         */
+        public async updateCallStatus(params: RequestType<typeof api_messenger_calls_updateCallStatus>): Promise<ResponseType<typeof api_messenger_calls_updateCallStatus>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                status: params.status,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/calls/${encodeURIComponent(params.callId)}/status`, {method: "PUT", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_calls_updateCallStatus>
+        }
+
+        /**
+         * Global event stream for a user
+         */
+        public async userEvents(): Promise<StreamInOut<void, StreamResponse<typeof api_messenger_user_events_userEvents>>> {
+            return await this.baseClient.createStreamInOut(`/messenger/user/events`)
         }
     }
 }

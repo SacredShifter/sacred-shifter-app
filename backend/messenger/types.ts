@@ -37,3 +37,21 @@ export interface Thread {
   last_message: string | null;
   unread_count: number;
 }
+
+export interface Call {
+  id: string;
+  thread_id: string;
+  caller_id: string;
+  receiver_id: string;
+  status: 'dialing' | 'answered' | 'missed' | 'declined' | 'ended';
+  type: 'voice' | 'video';
+  created_at: Date;
+  started_at: Date | null;
+  ended_at: Date | null;
+  duration_seconds: number | null;
+}
+
+export interface SignalingMessage {
+  type: 'offer' | 'answer' | 'candidate' | 'hangup';
+  payload: any;
+}
