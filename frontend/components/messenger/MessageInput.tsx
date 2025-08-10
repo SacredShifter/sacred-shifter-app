@@ -3,7 +3,8 @@ import { Send, Paperclip, Smile } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { usePresence } from '../../hooks/usePresence'
-import { uploadFile, type MessageContent } from '../../lib/supabase-messenger'
+import { uploadFile } from '../../lib/files'
+import type { MessageContent } from '~backend/messenger/types'
 import VigilPicker from './VigilPicker'
 
 interface MessageInputProps {

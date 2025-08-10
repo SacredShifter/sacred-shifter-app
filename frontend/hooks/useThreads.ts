@@ -2,6 +2,7 @@ import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import backend from '~backend/client'
 import { useToast } from '@/components/ui/use-toast'
+import { AURA_BOT_ID } from '../config'
 
 export function useThreads() {
   const [searchTerm, setSearchTerm] = useState('')
@@ -120,7 +121,6 @@ export function useThreads() {
   // Start Aura conversation
   const startAuraConversation = async () => {
     try {
-      const AURA_BOT_ID = '00000000-0000-0000-0000-000000000001';
       const threadId = await startThreadMutation.mutateAsync({
         memberIds: [AURA_BOT_ID],
         title: 'Aura - Sacred AI Assistant'

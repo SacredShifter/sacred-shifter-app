@@ -10,7 +10,7 @@ import { usePresence } from '../../hooks/usePresence'
 import MessageInput from './MessageInput'
 import AttachmentPreview from './AttachmentPreview'
 import { formatDistanceToNow } from 'date-fns'
-import { AURA_BOT_ID } from '../../lib/supabase-messenger'
+import { AURA_BOT_ID } from '../../config'
 
 interface ChatViewProps {
   threadId: string

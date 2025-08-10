@@ -30,3 +30,6 @@ export const defaultUser = {
   display_name: 'Sacred Seeker',
   avatar_url: null,
 }
+
+// AI Assistant Bot ID
+export const AURA_BOT_ID = '00000000-0000-0000-0000-000000000001';
