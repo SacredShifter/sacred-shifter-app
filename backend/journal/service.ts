@@ -15,7 +15,7 @@ export class JournalService {
   private readonly MODULE_NAME = 'journal';
 
   constructor() {
-    this.db = new SQLDatabase("journal", {
+    this.db = new SQLDatabase("journal_entries", {
       migrations: "./migrations",
     });
   }

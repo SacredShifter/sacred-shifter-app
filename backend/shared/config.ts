@@ -11,21 +11,21 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
   journal: {
     name: 'journal',
     version: '1.0.0',
-    database_name: 'journal',
+    database_name: 'journal_entries',
     features: ['entries', 'analytics', 'export'],
     dependencies: ['ai']
   },
   meditation: {
     name: 'meditation',
     version: '1.0.0',
-    database_name: 'meditation',
+    database_name: 'meditation_sessions',
     features: ['sessions', 'analytics', 'soundscapes'],
     dependencies: ['ai']
   },
   community: {
     name: 'community',
     version: '1.0.0',
-    database_name: 'community',
+    database_name: 'community_data',
     features: ['learnings', 'messages', 'circles'],
     dependencies: ['ai']
   },
@@ -39,7 +39,7 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
   codex: {
     name: 'codex',
     version: '1.0.0',
-    database_name: 'codex',
+    database_name: 'resonant_codex',
     features: ['entries', 'analytics', 'sharing', 'resonance', 'ai_insights'],
     dependencies: ['ai']
   }

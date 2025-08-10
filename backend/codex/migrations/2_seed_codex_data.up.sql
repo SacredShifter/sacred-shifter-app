@@ -1,6 +1,6 @@
 -- Seed some example codex entries
 INSERT INTO resonant_codex_entries (
-  mode, title, content, entry_type, tags, visibility, created_at
+  mode, title, content, entry_type, tags, resonance_rating, resonance_signature, resonance_channels, occurred_at, visibility, created_at
 ) VALUES
 (
   'codex',
@@ -8,6 +8,10 @@ INSERT INTO resonant_codex_entries (
   '{"body": "During today''s meditation on the Flower of Life pattern, I experienced a profound sense of interconnectedness. The geometric forms seemed to pulse with living energy, revealing the mathematical foundation underlying all creation.", "highlights": ["interconnectedness", "mathematical foundation"], "attachments": [], "metrics": {"duration_sec": 1800}, "prompts": ["What patterns am I noticing in my spiritual practice?"], "links": []}',
   'insight',
   ARRAY['sacred geometry', 'meditation', 'interconnectedness'],
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   'private',
   NOW() - INTERVAL '3 days'
 ),
@@ -17,10 +21,11 @@ INSERT INTO resonant_codex_entries (
   '{"body": "Saw 333 on clock, receipt total, and license plate within 2 hours. Felt strong pull toward new creative project immediately after the third sighting.", "highlights": ["creative project", "strong pull"], "attachments": [], "metrics": {}, "prompts": [], "links": []}',
   'synchronicity',
   ARRAY['numbers', 'creativity', 'guidance', '333'],
-  'private',
   0.85,
   'Sol-333:A3',
   ARRAY['vision', 'intuition'],
+  NOW() - INTERVAL '2 days',
+  'private',
   NOW() - INTERVAL '2 days'
 ),
 (
@@ -29,6 +34,10 @@ INSERT INTO resonant_codex_entries (
   '{"body": "My daily breathwork practice has evolved significantly over the past month. Starting with simple 4-7-8 breathing, I''ve now incorporated Wim Hof techniques and pranayama. The combination creates a powerful state of expanded awareness.", "highlights": ["expanded awareness", "combination"], "attachments": [], "metrics": {"breath": "4-7-8, Wim Hof", "duration_sec": 1200}, "prompts": ["How has my practice changed?", "What new techniques am I drawn to?"], "links": []}',
   'practice',
   ARRAY['breathwork', 'pranayama', 'awareness'],
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   'private',
   NOW() - INTERVAL '1 day'
 ),
@@ -38,10 +47,11 @@ INSERT INTO resonant_codex_entries (
   '{"body": "During morning meditation, experienced vivid vision of golden light emanating from heart center, expanding to encompass entire room. Felt profound sense of unity and love.", "highlights": ["golden light", "heart center", "unity"], "attachments": [], "metrics": {"duration_sec": 2400}, "prompts": [], "links": []}',
   'vision',
   ARRAY['light', 'heart chakra', 'expansion', 'unity'],
-  'private',
   0.95,
   'Aur-528:H7',
   ARRAY['vision', 'somatic', 'energy'],
+  NOW() - INTERVAL '5 hours',
+  'private',
   NOW() - INTERVAL '5 hours'
 ),
 (
@@ -50,6 +60,10 @@ INSERT INTO resonant_codex_entries (
   '{"body": "Reviewing my dream journal from the past month, I notice recurring themes of flying, water, and ancient symbols. The flying dreams always occur during periods of creative breakthrough. Water dreams seem connected to emotional processing.", "highlights": ["recurring themes", "creative breakthrough", "emotional processing"], "attachments": [], "metrics": {}, "prompts": ["What patterns emerge in my dreams?", "How do dreams connect to waking life?"], "links": []}',
   'analysis',
   ARRAY['dreams', 'patterns', 'symbols', 'creativity'],
+  NULL,
+  NULL,
+  NULL,
+  NULL,
   'private',
   NOW() - INTERVAL '6 hours'
 );
