@@ -1,12 +1,13 @@
 import { createClient } from '@supabase/supabase-js'
 import type { Database } from './supabase'
 
-const supabaseUrl = 'https://your-project.supabase.co'
-const supabaseAnonKey = 'your-anon-key'
+// Use the same configuration as the main supabase client
+const supabaseUrl = process.env.REACT_APP_SUPABASE_URL || 'https://your-project-ref.supabase.co'
+const supabaseAnonKey = process.env.REACT_APP_SUPABASE_ANON_KEY || 'your-anon-key-here'
 
 export const supabase = createClient<Database>(supabaseUrl, supabaseAnonKey)
 
-// Aura bot user ID - in production this would be a real user account
+// Aura bot user ID - this should be a real UUID in your auth.users table
 export const AURA_BOT_ID = '00000000-0000-0000-0000-000000000001'
 
 // Message content types
@@ -122,7 +123,7 @@ export async function callAuraBot(threadId: string, userMessage: string): Promis
     
     const response = botResponses[Math.floor(Math.random() * botResponses.length)]
     
-    // Send bot message
+    // Send bot message using the RPC function
     await supabase.rpc('api_send_message', {
       p_thread_id: threadId,
       p_body: response,
