@@ -793,10 +793,40 @@ import {
     listComments as api_social_comments_listComments
 } from "~backend/social/comments";
 import {
+    followUser as api_social_follows_followUser,
+    getFollowStats as api_social_follows_getFollowStats,
+    getMutualFollowers as api_social_follows_getMutualFollowers,
+    getSuggestedFollows as api_social_follows_getSuggestedFollows,
+    listFollowers as api_social_follows_listFollowers,
+    listFollowing as api_social_follows_listFollowing,
+    unfollowUser as api_social_follows_unfollowUser
+} from "~backend/social/follows";
+import {
+    deleteNotification as api_social_notifications_deleteNotification,
+    getNotificationCounts as api_social_notifications_getNotificationCounts,
+    listNotifications as api_social_notifications_listNotifications,
+    markNotificationAsRead as api_social_notifications_markNotificationAsRead
+} from "~backend/social/notifications";
+import {
     createPost as api_social_posts_createPost,
     listPosts as api_social_posts_listPosts,
     toggleReaction as api_social_posts_toggleReaction
 } from "~backend/social/posts";
+import {
+    getProfile as api_social_profiles_getProfile,
+    getProfileStats as api_social_profiles_getProfileStats,
+    getProfilesByInterests as api_social_profiles_getProfilesByInterests,
+    getTrendingProfiles as api_social_profiles_getTrendingProfiles,
+    searchProfiles as api_social_profiles_searchProfiles,
+    updateProfile as api_social_profiles_updateProfile
+} from "~backend/social/profiles";
+import {
+    checkPostShared as api_social_shares_checkPostShared,
+    getUserShares as api_social_shares_getUserShares,
+    listPostShares as api_social_shares_listPostShares,
+    sharePost as api_social_shares_sharePost,
+    unsharePost as api_social_shares_unsharePost
+} from "~backend/social/shares";
 
 export namespace social {
 
@@ -805,15 +835,47 @@ export namespace social {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.checkPostShared = this.checkPostShared.bind(this)
             this.createCircle = this.createCircle.bind(this)
             this.createComment = this.createComment.bind(this)
             this.createPost = this.createPost.bind(this)
+            this.deleteNotification = this.deleteNotification.bind(this)
+            this.followUser = this.followUser.bind(this)
+            this.getFollowStats = this.getFollowStats.bind(this)
+            this.getMutualFollowers = this.getMutualFollowers.bind(this)
+            this.getNotificationCounts = this.getNotificationCounts.bind(this)
+            this.getProfile = this.getProfile.bind(this)
+            this.getProfileStats = this.getProfileStats.bind(this)
+            this.getProfilesByInterests = this.getProfilesByInterests.bind(this)
+            this.getSuggestedFollows = this.getSuggestedFollows.bind(this)
+            this.getTrendingProfiles = this.getTrendingProfiles.bind(this)
+            this.getUserShares = this.getUserShares.bind(this)
             this.joinCircle = this.joinCircle.bind(this)
             this.leaveCircle = this.leaveCircle.bind(this)
             this.listCircles = this.listCircles.bind(this)
             this.listComments = this.listComments.bind(this)
+            this.listFollowers = this.listFollowers.bind(this)
+            this.listFollowing = this.listFollowing.bind(this)
+            this.listNotifications = this.listNotifications.bind(this)
+            this.listPostShares = this.listPostShares.bind(this)
             this.listPosts = this.listPosts.bind(this)
+            this.markAllNotificationsAsRead = this.markAllNotificationsAsRead.bind(this)
+            this.markNotificationAsRead = this.markNotificationAsRead.bind(this)
+            this.searchProfiles = this.searchProfiles.bind(this)
+            this.sharePost = this.sharePost.bind(this)
             this.toggleReaction = this.toggleReaction.bind(this)
+            this.unfollowUser = this.unfollowUser.bind(this)
+            this.unsharePost = this.unsharePost.bind(this)
+            this.updateProfile = this.updateProfile.bind(this)
+        }
+
+        /**
+         * Checks if current user has shared a post.
+         */
+        public async checkPostShared(params: { postId: string }): Promise<ResponseType<typeof api_social_shares_checkPostShared>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/share/check`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_shares_checkPostShared>
         }
 
         /**
@@ -849,6 +911,117 @@ export namespace social {
         }
 
         /**
+         * Deletes a notification.
+         */
+        public async deleteNotification(params: { notificationId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/notifications/${encodeURIComponent(params.notificationId)}`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Follows a user.
+         */
+        public async followUser(params: { userId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/follow`, {method: "POST", body: undefined})
+        }
+
+        /**
+         * Gets follow statistics for a user.
+         */
+        public async getFollowStats(params: { userId: string }): Promise<ResponseType<typeof api_social_follows_getFollowStats>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/follow-stats`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_follows_getFollowStats>
+        }
+
+        /**
+         * Gets mutual followers between current user and target user.
+         */
+        public async getMutualFollowers(params: { userId: string }): Promise<ResponseType<typeof api_social_follows_getMutualFollowers>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/mutual-followers`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_follows_getMutualFollowers>
+        }
+
+        /**
+         * Gets notification counts.
+         */
+        public async getNotificationCounts(): Promise<ResponseType<typeof api_social_notifications_getNotificationCounts>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/notifications/counts`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_notifications_getNotificationCounts>
+        }
+
+        /**
+         * Gets a user's profile.
+         */
+        public async getProfile(params: { userId: string }): Promise<ResponseType<typeof api_social_profiles_getProfile>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/profile`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_getProfile>
+        }
+
+        /**
+         * Gets detailed profile statistics.
+         */
+        public async getProfileStats(params: { userId: string }): Promise<ResponseType<typeof api_social_profiles_getProfileStats>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/stats`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_getProfileStats>
+        }
+
+        /**
+         * Gets profiles by interests.
+         */
+        public async getProfilesByInterests(params: RequestType<typeof api_social_profiles_getProfilesByInterests>): Promise<ResponseType<typeof api_social_profiles_getProfilesByInterests>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/by-interests`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_getProfilesByInterests>
+        }
+
+        /**
+         * Gets suggested users to follow.
+         */
+        public async getSuggestedFollows(params: RequestType<typeof api_social_follows_getSuggestedFollows>): Promise<ResponseType<typeof api_social_follows_getSuggestedFollows>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit: params.limit === undefined ? undefined : String(params.limit),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/suggested-follows`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_follows_getSuggestedFollows>
+        }
+
+        /**
+         * Gets trending profiles.
+         */
+        public async getTrendingProfiles(params: RequestType<typeof api_social_profiles_getTrendingProfiles>): Promise<ResponseType<typeof api_social_profiles_getTrendingProfiles>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit: params.limit === undefined ? undefined : String(params.limit),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/trending`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_getTrendingProfiles>
+        }
+
+        /**
+         * Gets posts shared by a user.
+         */
+        public async getUserShares(params: RequestType<typeof api_social_shares_getUserShares>): Promise<ResponseType<typeof api_social_shares_getUserShares>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:  params.limit === undefined ? undefined : String(params.limit),
+                offset: params.offset === undefined ? undefined : String(params.offset),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/shares`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_shares_getUserShares>
+        }
+
+        /**
          * Joins a circle.
          */
         public async joinCircle(params: { circleId: string }): Promise<void> {
@@ -881,6 +1054,67 @@ export namespace social {
         }
 
         /**
+         * Lists followers of a user.
+         */
+        public async listFollowers(params: RequestType<typeof api_social_follows_listFollowers>): Promise<ResponseType<typeof api_social_follows_listFollowers>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:  params.limit === undefined ? undefined : String(params.limit),
+                offset: params.offset === undefined ? undefined : String(params.offset),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/followers`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_follows_listFollowers>
+        }
+
+        /**
+         * Lists users that a user is following.
+         */
+        public async listFollowing(params: RequestType<typeof api_social_follows_listFollowing>): Promise<ResponseType<typeof api_social_follows_listFollowing>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:  params.limit === undefined ? undefined : String(params.limit),
+                offset: params.offset === undefined ? undefined : String(params.offset),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/following`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_follows_listFollowing>
+        }
+
+        /**
+         * Lists notifications for the current user.
+         */
+        public async listNotifications(params: RequestType<typeof api_social_notifications_listNotifications>): Promise<ResponseType<typeof api_social_notifications_listNotifications>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:         params.limit === undefined ? undefined : String(params.limit),
+                offset:        params.offset === undefined ? undefined : String(params.offset),
+                "unread_only": params["unread_only"] === undefined ? undefined : String(params["unread_only"]),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/notifications`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_notifications_listNotifications>
+        }
+
+        /**
+         * Lists users who shared a post.
+         */
+        public async listPostShares(params: RequestType<typeof api_social_shares_listPostShares>): Promise<ResponseType<typeof api_social_shares_listPostShares>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                limit:  params.limit === undefined ? undefined : String(params.limit),
+                offset: params.offset === undefined ? undefined : String(params.offset),
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/shares`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_shares_listPostShares>
+        }
+
+        /**
          * Lists posts for the feed.
          */
         public async listPosts(params: RequestType<typeof api_social_posts_listPosts>): Promise<ResponseType<typeof api_social_posts_listPosts>> {
@@ -895,6 +1129,52 @@ export namespace social {
         }
 
         /**
+         * Marks all notifications as read.
+         */
+        public async markAllNotificationsAsRead(): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/notifications/read-all`, {method: "PUT", body: undefined})
+        }
+
+        /**
+         * Marks a notification as read.
+         */
+        public async markNotificationAsRead(params: { notificationId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/notifications/${encodeURIComponent(params.notificationId)}/read`, {method: "PUT", body: undefined})
+        }
+
+        /**
+         * Searches for user profiles.
+         */
+        public async searchProfiles(params: RequestType<typeof api_social_profiles_searchProfiles>): Promise<ResponseType<typeof api_social_profiles_searchProfiles>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "experience_level": params["experience_level"],
+                interests:          params.interests?.map((v) => v),
+                limit:              params.limit === undefined ? undefined : String(params.limit),
+                offset:             params.offset === undefined ? undefined : String(params.offset),
+                query:              params.query,
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/users/search`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_searchProfiles>
+        }
+
+        /**
+         * Shares a post.
+         */
+        public async sharePost(params: RequestType<typeof api_social_shares_sharePost>): Promise<ResponseType<typeof api_social_shares_sharePost>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content: params.content,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/share`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_shares_sharePost>
+        }
+
+        /**
          * Toggles a reaction on a post.
          */
         public async toggleReaction(params: RequestType<typeof api_social_posts_toggleReaction>): Promise<void> {
@@ -904,6 +1184,29 @@ export namespace social {
             }
 
             await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/reactions`, {method: "POST", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Unfollows a user.
+         */
+        public async unfollowUser(params: { userId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/users/${encodeURIComponent(params.userId)}/follow`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Unshares a post.
+         */
+        public async unsharePost(params: { postId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/share`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Updates the current user's profile.
+         */
+        public async updateProfile(params: RequestType<typeof api_social_profiles_updateProfile>): Promise<ResponseType<typeof api_social_profiles_updateProfile>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/profile`, {method: "PUT", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_profiles_updateProfile>
         }
     }
 }

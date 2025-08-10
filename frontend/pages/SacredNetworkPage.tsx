@@ -1,5 +1,5 @@
 import { useState } from 'react';
-import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal, Eye, X, Send, Sparkles, Zap, Star } from 'lucide-react';
+import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal, Eye, X, Send, Sparkles, Zap, Star, User } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -12,24 +12,51 @@ import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import { useFeed } from '../hooks/useFeed';
 import { useCircles } from '../hooks/useCircles';
+import { useQuery } from '@tanstack/react-query';
+import backend from '~backend/client';
 import { defaultUser } from '../config';
 import MessengerDrawer from '../components/messenger/MessengerDrawer';
 import PostCard from '../components/sacred-network/PostCard';
+import NotificationsBell from '../components/sacred-network/NotificationsBell';
+import UserProfile from '../components/sacred-network/UserProfile';
 
 export default function SacredNetworkPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
   const [newPostContent, setNewPostContent] = useState('');
   const [newPostVisibility, setNewPostVisibility] = useState<'public' | 'followers' | 'private'>('public');
+  const [newPostTags, setNewPostTags] = useState('');
+  const [newPostLocation, setNewPostLocation] = useState('');
+  const [newPostFeeling, setNewPostFeeling] = useState('');
   const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
   const [newCircleName, setNewCircleName] = useState('');
   const [newCircleDescription, setNewCircleDescription] = useState('');
   const [isCreateCircleOpen, setIsCreateCircleOpen] = useState(false);
   const [selectedCircle, setSelectedCircle] = useState<string | null>(null);
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
+  const [currentView, setCurrentView] = useState<'feed' | 'profile' | 'explore'>('feed');
+  const [selectedUserId, setSelectedUserId] = useState<string | null>(null);
+  const [searchQuery, setSearchQuery] = useState('');
   const { toast } = useToast();
 
   const { posts, loading: postsLoading, createPost, toggleReaction } = useFeed(selectedCircle || undefined);
   const { circles, myCircles, createCircle, joinCircle, leaveCircle } = useCircles();
+
+  // Get suggested users and trending profiles
+  const { data: suggestedUsers } = useQuery({
+    queryKey: ['suggested-follows'],
+    queryFn: () => backend.social.getSuggestedFollows({ limit: 5 }),
+  });
+
+  const { data: trendingProfiles } = useQuery({
+    queryKey: ['trending-profiles'],
+    queryFn: () => backend.social.getTrendingProfiles({ limit: 5 }),
+  });
+
+  const { data: searchResults } = useQuery({
+    queryKey: ['search-profiles', searchQuery],
+    queryFn: () => backend.social.searchProfiles({ query: searchQuery, limit: 10 }),
+    enabled: searchQuery.length > 2,
+  });
 
   const handleCreatePost = () => {
     if (!newPostContent.trim()) {
@@ -41,13 +68,21 @@ export default function SacredNetworkPage() {
       return;
     }
 
+    const tags = newPostTags.split(',').map(tag => tag.trim()).filter(Boolean);
+
     createPost({
       content: newPostContent,
       visibility: newPostVisibility,
       circle_id: selectedCircle || undefined,
+      tags,
+      location: newPostLocation || undefined,
+      feeling: newPostFeeling || undefined,
     });
     
     setNewPostContent('');
+    setNewPostTags('');
+    setNewPostLocation('');
+    setNewPostFeeling('');
     setIsCreatePostOpen(false);
   };
 
@@ -70,6 +105,11 @@ export default function SacredNetworkPage() {
     setNewCircleName('');
     setNewCircleDescription('');
     setIsCreateCircleOpen(false);
+  };
+
+  const handleUserClick = (userId: string) => {
+    setSelectedUserId(userId);
+    setCurrentView('profile');
   };
 
   const selectedCircleData = circles.find(c => c.id === selectedCircle);
@@ -144,18 +184,55 @@ export default function SacredNetworkPage() {
                 <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
                 <Input
                   placeholder="Search the Sacred Network..."
+                  value={searchQuery}
+                  onChange={(e) => setSearchQuery(e.target.value)}
                   className="pl-10 bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400 focus:border-purple-400"
                 />
+                {searchResults && searchResults.profiles.length > 0 && (
+                  <div className="absolute top-full left-0 right-0 mt-1 bg-purple-900/95 backdrop-blur-lg border border-purple-500/30 rounded-lg shadow-xl z-50">
+                    {searchResults.profiles.map((profile) => (
+                      <div
+                        key={profile.user_id}
+                        onClick={() => {
+                          handleUserClick(profile.user_id);
+                          setSearchQuery('');
+                        }}
+                        className="flex items-center space-x-3 p-3 hover:bg-purple-800/50 cursor-pointer first:rounded-t-lg last:rounded-b-lg"
+                      >
+                        <Avatar className="w-8 h-8">
+                          <AvatarImage src={profile.avatar_url || undefined} />
+                          <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
+                            {profile.display_name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="text-sm font-medium text-purple-100">{profile.display_name}</p>
+                          <p className="text-xs text-purple-400">@{profile.username}</p>
+                        </div>
+                      </div>
+                    ))}
+                  </div>
+                )}
               </div>
             </div>
 
             {/* Right side */}
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm" className="text-purple-200 hover:text-white hover:bg-purple-800/50">
-                <Bell className="w-5 h-5" />
+              <NotificationsBell />
+              
+              <Button 
+                variant="ghost" 
+                size="sm" 
+                onClick={() => setCurrentView('explore')}
+                className="text-purple-200 hover:text-white hover:bg-purple-800/50"
+              >
+                <Eye className="w-5 h-5" />
               </Button>
               
-              <Avatar className="w-8 h-8 ring-2 ring-purple-400/50">
+              <Avatar 
+                className="w-8 h-8 ring-2 ring-purple-400/50 cursor-pointer"
+                onClick={() => handleUserClick(defaultUser.id)}
+              >
                 <AvatarImage src={defaultUser.avatar_url || undefined} />
                 <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
                   {defaultUser.display_name.charAt(0)}
@@ -167,349 +244,53 @@ export default function SacredNetworkPage() {
       </header>
 
       <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
-        <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
-          {/* Left Sidebar */}
-          <div className={`lg:col-span-1 ${sidebarOpen ? 'block' : 'hidden lg:block'}`}>
-            <div className="sticky top-24 space-y-6">
-              {/* Profile Card */}
-              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
-                <CardContent className="p-4">
-                  <div className="flex items-center space-x-3">
-                    <Avatar className="w-12 h-12 ring-2 ring-purple-400/50">
-                      <AvatarImage src={defaultUser.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                        {defaultUser.display_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div>
-                      <p className="font-medium text-purple-100">{defaultUser.display_name}</p>
-                      <p className="text-sm text-purple-300">@{defaultUser.username}</p>
-                    </div>
-                  </div>
-                  <div className="mt-4 grid grid-cols-3 gap-2 text-center">
-                    <div>
-                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        {posts.length}
-                      </p>
-                      <p className="text-xs text-purple-400">Transmissions</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        0
-                      </p>
-                      <p className="text-xs text-purple-400">Following</p>
-                    </div>
-                    <div>
-                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
-                        0
-                      </p>
-                      <p className="text-xs text-purple-400">Resonators</p>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* My Circles */}
-              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
-                <CardHeader className="pb-3">
-                  <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg text-purple-100 flex items-center">
-                      <Users className="w-4 h-4 mr-2" />
-                      Sacred Circles
-                    </CardTitle>
-                    <Dialog open={isCreateCircleOpen} onOpenChange={setIsCreateCircleOpen}>
-                      <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm" className="text-purple-300 hover:text-white hover:bg-purple-800/50">
-                          <Plus className="w-4 h-4" />
-                        </Button>
-                      </DialogTrigger>
-                      <DialogContent className="bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
-                        <DialogHeader>
-                          <DialogTitle className="text-purple-100">Manifest New Circle</DialogTitle>
-                        </DialogHeader>
-                        <div className="space-y-4">
-                          <Input
-                            placeholder="Circle name..."
-                            value={newCircleName}
-                            onChange={(e) => setNewCircleName(e.target.value)}
-                            className="bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
-                          />
-                          <Textarea
-                            placeholder="Circle description (optional)..."
-                            value={newCircleDescription}
-                            onChange={(e) => setNewCircleDescription(e.target.value)}
-                            rows={3}
-                            className="bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
-                          />
-                          <Button
-                            onClick={handleCreateCircle}
-                            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                          >
-                            ✨ Create Sacred Circle
-                          </Button>
-                        </div>
-                      </DialogContent>
-                    </Dialog>
-                  </div>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {/* All Posts Option */}
-                  <div
-                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
-                      !selectedCircle 
-                        ? 'bg-purple-800/50 border border-purple-400/50 shadow-lg' 
-                        : 'hover:bg-purple-800/30 border border-transparent'
-                    }`}
-                    onClick={() => setSelectedCircle(null)}
-                  >
-                    <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
-                      <span className="font-medium text-sm text-purple-100">All Transmissions</span>
-                    </div>
-                    <Badge variant="outline" className="text-xs border-purple-400 text-purple-300">
-                      {posts.length}
-                    </Badge>
-                  </div>
-
-                  {/* User's Circles */}
-                  {myCircles.map((circle) => (
-                    <div
-                      key={circle.id}
-                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
-                        selectedCircle === circle.id 
-                          ? 'bg-indigo-800/50 border border-indigo-400/50 shadow-lg' 
-                          : 'hover:bg-purple-800/30 border border-transparent'
-                      }`}
-                      onClick={() => setSelectedCircle(circle.id)}
-                    >
-                      <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400" />
-                        <span className="font-medium text-sm text-purple-100">{circle.name}</span>
-                      </div>
-                      <div className="flex items-center space-x-1">
-                        <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-300">
-                          <Users className="w-3 h-3 mr-1" />
-                          {circle.member_count}
-                        </Badge>
-                        <Button
-                          variant="ghost"
-                          size="sm"
-                          onClick={(e) => {
-                            e.stopPropagation();
-                            leaveCircle(circle.id);
-                          }}
-                          className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
-                        >
-                          ×
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {myCircles.length === 0 && (
-                    <p className="text-sm text-purple-400 text-center py-4">
-                      No circles joined yet. Create or join one to begin.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
+        {currentView === 'profile' && selectedUserId ? (
+          <div className="space-y-6">
+            <Button
+              variant="ghost"
+              onClick={() => setCurrentView('feed')}
+              className="text-purple-200 hover:text-white hover:bg-purple-800/50"
+            >
+              <ArrowLeft className="w-4 h-4 mr-2" />
+              Back to Feed
+            </Button>
+            <UserProfile 
+              userId={selectedUserId} 
+              isOwnProfile={selectedUserId === defaultUser.id}
+            />
           </div>
-
-          {/* Main Feed */}
-          <div className="lg:col-span-2">
-            <div className="space-y-6">
-              {/* Post Composer */}
-              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
-                <CardContent className="p-4">
-                  <div className="flex space-x-3">
-                    <Avatar className="w-10 h-10 ring-2 ring-purple-400/50">
-                      <AvatarImage src={defaultUser.avatar_url || undefined} />
-                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                        {defaultUser.display_name.charAt(0)}
-                      </AvatarFallback>
-                    </Avatar>
-                    <div className="flex-1">
-                      <Dialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen}>
-                        <DialogTrigger asChild>
-                          <div className="bg-purple-900/30 rounded-lg p-4 cursor-pointer hover:bg-purple-800/40 transition-all border border-purple-500/20 hover:border-purple-400/40">
-                            <p className="text-purple-300">
-                              {selectedCircleData 
-                                ? `Share wisdom with ${selectedCircleData.name}...`
-                                : 'Share your sacred insights with the network...'
-                              }
-                            </p>
-                          </div>
-                        </DialogTrigger>
-                        <DialogContent className="max-w-2xl bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
-                          <DialogHeader>
-                            <DialogTitle className="text-purple-100 flex items-center">
-                              <Sparkles className="w-5 h-5 mr-2" />
-                              {selectedCircleData 
-                                ? `Transmit to ${selectedCircleData.name}`
-                                : 'Create Sacred Transmission'
-                              }
-                            </DialogTitle>
-                          </DialogHeader>
-                          <div className="space-y-4">
-                            <Textarea
-                              placeholder="What sacred wisdom flows through you today?"
-                              value={newPostContent}
-                              onChange={(e) => setNewPostContent(e.target.value)}
-                              rows={6}
-                              className="resize-none bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
-                            />
-                            <div className="flex items-center justify-between">
-                              <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
-                                <SelectTrigger className="w-40 bg-black/30 border-purple-500/30 text-purple-100">
-                                  <SelectValue />
-                                </SelectTrigger>
-                                <SelectContent className="bg-purple-900 border-purple-500/30">
-                                  <SelectItem value="public" className="text-purple-100">🌍 Public</SelectItem>
-                                  <SelectItem value="followers" className="text-purple-100">👥 Resonators</SelectItem>
-                                  <SelectItem value="private" className="text-purple-100">🔒 Private</SelectItem>
-                                </SelectContent>
-                              </Select>
-                              <Button
-                                onClick={handleCreatePost}
-                                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                              >
-                                ✨ Transmit
-                              </Button>
-                            </div>
-                          </div>
-                        </DialogContent>
-                      </Dialog>
-                    </div>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Feed Posts */}
-              {posts.map((post) => (
-                <PostCard key={post.id} post={post} onReaction={toggleReaction} />
-              ))}
-
-              {posts.length === 0 && (
-                <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30 border-dashed">
-                  <CardContent className="text-center py-16">
-                    <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-4" />
-                    <h3 className="text-xl font-medium text-purple-100 mb-2">The Network Awaits</h3>
-                    <p className="text-purple-400 mb-6">
-                      {selectedCircleData 
-                        ? `No transmissions in ${selectedCircleData.name} yet. Be the first to share sacred wisdom!`
-                        : 'No transmissions yet. Begin sharing your sacred insights!'
-                      }
-                    </p>
-                    <Button 
-                      onClick={() => setIsCreatePostOpen(true)}
-                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                    >
-                      <Sparkles className="w-4 h-4 mr-2" />
-                      Create First Transmission
-                    </Button>
-                  </CardContent>
-                </Card>
-              )}
+        ) : currentView === 'explore' ? (
+          <div className="space-y-6">
+            <div className="flex items-center justify-between">
+              <h2 className="text-2xl font-bold text-purple-100">Explore Sacred Network</h2>
+              <Button
+                variant="ghost"
+                onClick={() => setCurrentView('feed')}
+                className="text-purple-200 hover:text-white hover:bg-purple-800/50"
+              >
+                <ArrowLeft className="w-4 h-4 mr-2" />
+                Back to Feed
+              </Button>
             </div>
-          </div>
 
-          {/* Right Sidebar */}
-          <div className="lg:col-span-1 hidden lg:block">
-            <div className="sticky top-24 space-y-6">
-              {/* Network Stats */}
+            <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
+              {/* Suggested Follows */}
               <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-purple-100 flex items-center">
-                    <Star className="w-4 h-4 mr-2" />
-                    Network Resonance
-                  </CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-3">
-                  <div className="flex justify-between">
-                    <span className="text-sm text-purple-400">Sacred Transmissions</span>
-                    <span className="font-medium text-purple-200">{posts.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-purple-400">Conscious Beings</span>
-                    <span className="font-medium text-purple-200">1</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-purple-400">Sacred Circles</span>
-                    <span className="font-medium text-purple-200">{circles.length}</span>
-                  </div>
-                  <div className="flex justify-between">
-                    <span className="text-sm text-purple-400">Today's Flow</span>
-                    <span className="font-medium text-purple-200">
-                      {posts.filter(p => new Date(p.created_at).toDateString() === new Date().toDateString()).length}
-                    </span>
-                  </div>
-                </CardContent>
-              </Card>
-
-              {/* Discover Circles */}
-              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg text-purple-100 flex items-center">
-                    <Eye className="w-4 h-4 mr-2" />
-                    Discover Circles
-                  </CardTitle>
+                <CardHeader>
+                  <CardTitle className="text-purple-100">Suggested Sacred Beings</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-4">
-                  {circles.filter(circle => !circle.is_member).slice(0, 5).map((circle) => (
-                    <div key={circle.id} className="space-y-3 p-3 rounded-lg bg-purple-900/20 border border-purple-500/20">
-                      <div className="flex items-start justify-between">
-                        <div className="flex-1">
-                          <h4 className="font-medium text-sm text-purple-100">{circle.name}</h4>
-                          {circle.description && (
-                            <p className="text-xs text-purple-400 line-clamp-2 mt-1">
-                              {circle.description}
-                            </p>
-                          )}
-                          <div className="flex items-center space-x-2 mt-2">
-                            <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-300">
-                              <Users className="w-3 h-3 mr-1" />
-                              {circle.member_count}
-                            </Badge>
-                            <Badge variant="outline" className="text-xs border-green-400 text-green-300">
-                              Open Circle
-                            </Badge>
-                          </div>
-                        </div>
-                        <Button
-                          size="sm"
-                          variant="outline"
-                          onClick={() => joinCircle(circle.id)}
-                          className="ml-2 border-purple-400 text-purple-300 hover:bg-purple-800/50 hover:text-white"
-                        >
-                          Join
-                        </Button>
-                      </div>
-                    </div>
-                  ))}
-                  {circles.filter(circle => !circle.is_member).length === 0 && (
-                    <p className="text-sm text-purple-400 text-center py-4">
-                      All circles joined! You're fully connected.
-                    </p>
-                  )}
-                </CardContent>
-              </Card>
-            </div>
-          </div>
-        </div>
-      </div>
-
-      {/* Floating Messages Button */}
-      <Button
-        className="fixed bottom-6 right-6 z-50 rounded-full w-16 h-16 shadow-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-2 border-purple-400/50"
-        onClick={() => setIsMessengerOpen(true)}
-      >
-        <MessageCircle className="w-6 h-6" />
-      </Button>
-
-      <MessengerDrawer
-        isOpen={isMessengerOpen}
-        onClose={() => setIsMessengerOpen(false)}
-      />
-    </div>
-  );
-}
+                  {suggestedUsers?.suggested_users.map((user) => (
+                    <div key={user.user_id} className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center space-x-3 cursor-pointer"
+                        onClick={() => handleUserClick(user.user_id)}
+                      >
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                            {user.display_name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-purple-100">{user.display_name}</p>
