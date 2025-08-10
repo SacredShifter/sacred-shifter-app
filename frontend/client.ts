@@ -842,7 +842,13 @@ export namespace social {
 /**
  * Import the endpoint handlers to derive the types for the client.
  */
-import { systemHealth as api_system_health_systemHealth } from "~backend/system/health";
+import {
+    detailedHealth as api_system_health_detailedHealth,
+    liveness as api_system_health_liveness,
+    metrics as api_system_health_metrics,
+    readiness as api_system_health_readiness,
+    systemHealth as api_system_health_systemHealth
+} from "~backend/system/health";
 
 export namespace system {
 
@@ -851,11 +857,51 @@ export namespace system {
 
         constructor(baseClient: BaseClient) {
             this.baseClient = baseClient
+            this.detailedHealth = this.detailedHealth.bind(this)
+            this.liveness = this.liveness.bind(this)
+            this.metrics = this.metrics.bind(this)
+            this.readiness = this.readiness.bind(this)
             this.systemHealth = this.systemHealth.bind(this)
         }
 
         /**
-         * System-wide health check that aggregates all module health statuses.
+         * Detailed health check for monitoring systems
+         */
+        public async detailedHealth(): Promise<ResponseType<typeof api_system_health_detailedHealth>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/system/health/detailed`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_system_health_detailedHealth>
+        }
+
+        /**
+         * Liveness probe for Kubernetes/container orchestration
+         */
+        public async liveness(): Promise<ResponseType<typeof api_system_health_liveness>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/system/live`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_system_health_liveness>
+        }
+
+        /**
+         * Metrics endpoint for monitoring systems
+         */
+        public async metrics(): Promise<ResponseType<typeof api_system_health_metrics>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/system/metrics`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_system_health_metrics>
+        }
+
+        /**
+         * Readiness probe for Kubernetes/container orchestration
+         */
+        public async readiness(): Promise<ResponseType<typeof api_system_health_readiness>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/system/ready`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_system_health_readiness>
+        }
+
+        /**
+         * Enhanced system-wide health check that aggregates all module health statuses.
          */
         public async systemHealth(): Promise<ResponseType<typeof api_system_health_systemHealth>> {
             // Now make the actual call to the API
