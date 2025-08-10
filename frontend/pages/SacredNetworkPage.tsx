@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal, Eye } from 'lucide-react';
+import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal, Eye, X, Send, Sparkles, Zap, Star } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -25,6 +25,8 @@ export default function SacredNetworkPage() {
   const [isMessagesOpen, setIsMessagesOpen] = useState(false);
   const [newMessage, setNewMessage] = useState('');
   const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [expandedPost, setExpandedPost] = useState<string | null>(null);
+  const [newComment, setNewComment] = useState('');
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
@@ -65,15 +67,15 @@ export default function SacredNetworkPage() {
       setNewPostContent('');
       setIsCreatePostOpen(false);
       toast({
-        title: "Success",
-        description: "Your post has been shared!",
+        title: "✨ Sacred Transmission Sent",
+        description: "Your wisdom has been shared with the network.",
       });
     },
     onError: (error) => {
       console.error('Failed to create post:', error);
       toast({
-        title: "Error",
-        description: "Failed to create post. Please try again.",
+        title: "⚠️ Transmission Failed",
+        description: "Unable to share your wisdom. Please try again.",
         variant: "destructive",
       });
     },
@@ -87,8 +89,8 @@ export default function SacredNetworkPage() {
     onError: (error) => {
       console.error('Failed to toggle like:', error);
       toast({
-        title: "Error",
-        description: "Failed to update like. Please try again.",
+        title: "⚠️ Resonance Failed",
+        description: "Unable to register your resonance. Please try again.",
         variant: "destructive",
       });
     },
@@ -104,15 +106,15 @@ export default function SacredNetworkPage() {
       setNewCircleDescription('');
       setIsCreateCircleOpen(false);
       toast({
-        title: "Success",
-        description: "Your circle has been created!",
+        title: "🔮 Sacred Circle Created",
+        description: "Your circle has been manifested in the network.",
       });
     },
     onError: (error) => {
       console.error('Failed to create circle:', error);
       toast({
-        title: "Error",
-        description: "Failed to create circle. Please try again.",
+        title: "⚠️ Circle Creation Failed",
+        description: "Unable to manifest your circle. Please try again.",
         variant: "destructive",
       });
     },
@@ -123,15 +125,15 @@ export default function SacredNetworkPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-circles'] });
       toast({
-        title: "Success",
-        description: "You've joined the circle!",
+        title: "🌟 Circle Joined",
+        description: "You've entered the sacred circle.",
       });
     },
     onError: (error) => {
       console.error('Failed to join circle:', error);
       toast({
-        title: "Error",
-        description: "Failed to join circle. Please try again.",
+        title: "⚠️ Unable to Join",
+        description: "Failed to enter the circle. Please try again.",
         variant: "destructive",
       });
     },
@@ -145,15 +147,15 @@ export default function SacredNetworkPage() {
         setSelectedCircle(null);
       }
       toast({
-        title: "Success",
-        description: "You've left the circle.",
+        title: "🚪 Circle Left",
+        description: "You've departed from the sacred circle.",
       });
     },
     onError: (error) => {
       console.error('Failed to leave circle:', error);
       toast({
-        title: "Error",
-        description: "Failed to leave circle. Please try again.",
+        title: "⚠️ Unable to Leave",
+        description: "Failed to leave the circle. Please try again.",
         variant: "destructive",
       });
     },
@@ -166,15 +168,36 @@ export default function SacredNetworkPage() {
       queryClient.invalidateQueries({ queryKey: ['social-messages'] });
       setNewMessage('');
       toast({
-        title: "Success",
-        description: "Message sent!",
+        title: "📨 Message Transmitted",
+        description: "Your sacred message has been delivered.",
       });
     },
     onError: (error) => {
       console.error('Failed to send message:', error);
       toast({
-        title: "Error",
-        description: "Failed to send message. Please try again.",
+        title: "⚠️ Transmission Failed",
+        description: "Unable to send your message. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const createCommentMutation = useMutation({
+    mutationFn: (data: { post_id: string; content: string }) =>
+      backend.social.createComment(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+      setNewComment('');
+      toast({
+        title: "💬 Reflection Added",
+        description: "Your wisdom has been shared.",
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to create comment:', error);
+      toast({
+        title: "⚠️ Reflection Failed",
+        description: "Unable to share your reflection. Please try again.",
         variant: "destructive",
       });
     },
@@ -183,8 +206,8 @@ export default function SacredNetworkPage() {
   const handleCreatePost = () => {
     if (!newPostContent.trim()) {
       toast({
-        title: "Error",
-        description: "Please write something before posting.",
+        title: "⚠️ Empty Transmission",
+        description: "Please share your wisdom before transmitting.",
         variant: "destructive",
       });
       return;
@@ -200,8 +223,8 @@ export default function SacredNetworkPage() {
   const handleCreateCircle = () => {
     if (!newCircleName.trim()) {
       toast({
-        title: "Error",
-        description: "Please enter a circle name.",
+        title: "⚠️ Circle Needs a Name",
+        description: "Please name your sacred circle.",
         variant: "destructive",
       });
       return;
@@ -217,7 +240,7 @@ export default function SacredNetworkPage() {
   const handleSendMessage = () => {
     if (!newMessage.trim() || !selectedConversation) {
       toast({
-        title: "Error",
+        title: "⚠️ Incomplete Message",
         description: "Please write a message and select a recipient.",
         variant: "destructive",
       });
@@ -227,6 +250,22 @@ export default function SacredNetworkPage() {
     sendMessageMutation.mutate({
       recipient_id: selectedConversation,
       content: newMessage,
+    });
+  };
+
+  const handleCreateComment = (postId: string) => {
+    if (!newComment.trim()) {
+      toast({
+        title: "⚠️ Empty Reflection",
+        description: "Please write your reflection before sharing.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createCommentMutation.mutate({
+      post_id: postId,
+      content: newComment,
     });
   };
 
@@ -244,24 +283,27 @@ export default function SacredNetworkPage() {
 
   if (postsLoading) {
     return (
-      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
-        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
+        <div className="text-center">
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-300 mx-auto mb-4"></div>
+          <p className="text-purple-200">Connecting to the Sacred Network...</p>
+        </div>
       </div>
     );
   }
 
   return (
-    <div className="min-h-screen bg-gray-50">
+    <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900">
       {/* Top Navigation */}
-      <header className="bg-white border-b border-gray-200 sticky top-0 z-40">
+      <header className="bg-black/20 backdrop-blur-lg border-b border-purple-500/20 sticky top-0 z-40">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="flex items-center justify-between h-16">
             {/* Left side */}
             <div className="flex items-center space-x-4">
               <Link to="/">
-                <Button variant="ghost" size="sm">
+                <Button variant="ghost" size="sm" className="text-purple-200 hover:text-white hover:bg-purple-800/50">
                   <ArrowLeft className="w-4 h-4 mr-2" />
-                  Back to Sacred Shifter
+                  Return to Sacred Shifter
                 </Button>
               </Link>
               
@@ -269,26 +311,32 @@ export default function SacredNetworkPage() {
                 variant="ghost"
                 size="sm"
                 onClick={() => setSidebarOpen(!sidebarOpen)}
-                className="lg:hidden"
+                className="lg:hidden text-purple-200 hover:text-white hover:bg-purple-800/50"
               >
                 <Menu className="w-5 h-5" />
               </Button>
               
-              <div className="flex items-center space-x-2">
-                <div className="w-8 h-8 bg-gradient-to-r from-purple-600 to-indigo-600 rounded-lg flex items-center justify-center">
-                  <span className="text-white font-bold text-sm">SN</span>
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-gradient-to-r from-purple-400 to-indigo-400 rounded-full flex items-center justify-center shadow-lg">
+                  <Sparkles className="w-5 h-5 text-white" />
                 </div>
-                <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
-                  Sacred Network
-                </h1>
+                <div>
+                  <h1 className="text-xl font-bold bg-gradient-to-r from-purple-200 to-pink-200 bg-clip-text text-transparent">
+                    Sacred Network
+                  </h1>
+                  <p className="text-xs text-purple-300">Consciousness Collective</p>
+                </div>
                 {selectedCircleData && (
                   <div className="flex items-center space-x-2">
-                    <span className="text-gray-400">•</span>
-                    <Badge variant="outline">{selectedCircleData.name}</Badge>
+                    <span className="text-purple-400">•</span>
+                    <Badge variant="outline" className="border-purple-400 text-purple-200 bg-purple-900/50">
+                      {selectedCircleData.name}
+                    </Badge>
                     <Button
                       variant="ghost"
                       size="sm"
                       onClick={() => setSelectedCircle(null)}
+                      className="text-purple-300 hover:text-white"
                     >
                       <X className="w-4 h-4" />
                     </Button>
@@ -300,23 +348,25 @@ export default function SacredNetworkPage() {
             {/* Center search */}
             <div className="hidden md:block flex-1 max-w-lg mx-8">
               <div className="relative">
-                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-gray-400 w-4 h-4" />
+                <Search className="absolute left-3 top-1/2 transform -translate-y-1/2 text-purple-400 w-4 h-4" />
                 <Input
-                  placeholder="Search Sacred Network..."
-                  className="pl-10 bg-gray-100 border-0"
+                  placeholder="Search the Sacred Network..."
+                  className="pl-10 bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400 focus:border-purple-400"
                 />
               </div>
             </div>
 
             {/* Right side */}
             <div className="flex items-center space-x-3">
-              <Button variant="ghost" size="sm">
+              <Button variant="ghost" size="sm" className="text-purple-200 hover:text-white hover:bg-purple-800/50">
                 <Bell className="w-5 h-5" />
               </Button>
               
-              <Avatar className="w-8 h-8">
+              <Avatar className="w-8 h-8 ring-2 ring-purple-400/50">
                 <AvatarImage src={profile?.avatar_url} />
-                <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
+                <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                  {profile?.display_name?.charAt(0) || 'SS'}
+                </AvatarFallback>
               </Avatar>
             </div>
           </div>
@@ -329,68 +379,81 @@ export default function SacredNetworkPage() {
           <div className={`lg:col-span-1 ${sidebarOpen ? 'block' : 'hidden lg:block'}`}>
             <div className="sticky top-24 space-y-6">
               {/* Profile Card */}
-              <Card>
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
-                    <Avatar className="w-12 h-12">
+                    <Avatar className="w-12 h-12 ring-2 ring-purple-400/50">
                       <AvatarImage src={profile?.avatar_url} />
-                      <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                        {profile?.display_name?.charAt(0) || 'SS'}
+                      </AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-gray-900">{profile?.display_name || 'Sacred Seeker'}</p>
-                      <p className="text-sm text-gray-500">@{profile?.username || 'sacred_seeker'}</p>
+                      <p className="font-medium text-purple-100">{profile?.display_name || 'Sacred Seeker'}</p>
+                      <p className="text-sm text-purple-300">@{profile?.username || 'sacred_seeker'}</p>
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-bold text-purple-600">{profile?.post_count || 0}</p>
-                      <p className="text-xs text-gray-500">Posts</p>
+                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        {profile?.post_count || 0}
+                      </p>
+                      <p className="text-xs text-purple-400">Transmissions</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600">{profile?.following_count || 0}</p>
-                      <p className="text-xs text-gray-500">Following</p>
+                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        {profile?.following_count || 0}
+                      </p>
+                      <p className="text-xs text-purple-400">Following</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600">{profile?.follower_count || 0}</p>
-                      <p className="text-xs text-gray-500">Followers</p>
+                      <p className="text-lg font-bold bg-gradient-to-r from-purple-400 to-pink-400 bg-clip-text text-transparent">
+                        {profile?.follower_count || 0}
+                      </p>
+                      <p className="text-xs text-purple-400">Resonators</p>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* My Circles */}
-              <Card>
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
                 <CardHeader className="pb-3">
                   <div className="flex items-center justify-between">
-                    <CardTitle className="text-lg">My Circles</CardTitle>
+                    <CardTitle className="text-lg text-purple-100 flex items-center">
+                      <Users className="w-4 h-4 mr-2" />
+                      Sacred Circles
+                    </CardTitle>
                     <Dialog open={isCreateCircleOpen} onOpenChange={setIsCreateCircleOpen}>
                       <DialogTrigger asChild>
-                        <Button variant="ghost" size="sm">
+                        <Button variant="ghost" size="sm" className="text-purple-300 hover:text-white hover:bg-purple-800/50">
                           <Plus className="w-4 h-4" />
                         </Button>
                       </DialogTrigger>
-                      <DialogContent>
+                      <DialogContent className="bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
                         <DialogHeader>
-                          <DialogTitle>Create New Circle</DialogTitle>
+                          <DialogTitle className="text-purple-100">Manifest New Circle</DialogTitle>
                         </DialogHeader>
                         <div className="space-y-4">
                           <Input
                             placeholder="Circle name..."
                             value={newCircleName}
                             onChange={(e) => setNewCircleName(e.target.value)}
+                            className="bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
                           />
                           <Textarea
                             placeholder="Circle description (optional)..."
                             value={newCircleDescription}
                             onChange={(e) => setNewCircleDescription(e.target.value)}
                             rows={3}
+                            className="bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
                           />
                           <Button
                             onClick={handleCreateCircle}
                             disabled={createCircleMutation.isPending}
-                            className="w-full"
+                            className="w-full bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                           >
-                            {createCircleMutation.isPending ? 'Creating...' : 'Create Circle'}
+                            {createCircleMutation.isPending ? 'Manifesting...' : '✨ Create Sacred Circle'}
                           </Button>
                         </div>
                       </DialogContent>
@@ -400,16 +463,18 @@ export default function SacredNetworkPage() {
                 <CardContent className="space-y-2">
                   {/* All Posts Option */}
                   <div
-                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                      !selectedCircle ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'
+                    className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                      !selectedCircle 
+                        ? 'bg-purple-800/50 border border-purple-400/50 shadow-lg' 
+                        : 'hover:bg-purple-800/30 border border-transparent'
                     }`}
                     onClick={() => setSelectedCircle(null)}
                   >
                     <div className="flex items-center space-x-2">
-                      <div className="w-3 h-3 rounded-full bg-purple-500" />
-                      <span className="font-medium text-sm">All Posts</span>
+                      <div className="w-3 h-3 rounded-full bg-gradient-to-r from-purple-400 to-pink-400" />
+                      <span className="font-medium text-sm text-purple-100">All Transmissions</span>
                     </div>
-                    <Badge variant="outline" className="text-xs">
+                    <Badge variant="outline" className="text-xs border-purple-400 text-purple-300">
                       {posts?.total || 0}
                     </Badge>
                   </div>
@@ -418,17 +483,19 @@ export default function SacredNetworkPage() {
                   {circles?.circles.filter(circle => circle.is_member).map((circle) => (
                     <div
                       key={circle.id}
-                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
-                        selectedCircle === circle.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                      className={`flex items-center justify-between p-3 rounded-lg cursor-pointer transition-all ${
+                        selectedCircle === circle.id 
+                          ? 'bg-indigo-800/50 border border-indigo-400/50 shadow-lg' 
+                          : 'hover:bg-purple-800/30 border border-transparent'
                       }`}
                       onClick={() => setSelectedCircle(circle.id)}
                     >
                       <div className="flex items-center space-x-2">
-                        <div className="w-3 h-3 rounded-full bg-green-500" />
-                        <span className="font-medium text-sm">{circle.name}</span>
+                        <div className="w-3 h-3 rounded-full bg-gradient-to-r from-indigo-400 to-cyan-400" />
+                        <span className="font-medium text-sm text-purple-100">{circle.name}</span>
                       </div>
                       <div className="flex items-center space-x-1">
-                        <Badge variant="outline" className="text-xs">
+                        <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-300">
                           <Users className="w-3 h-3 mr-1" />
                           {circle.member_count}
                         </Badge>
@@ -439,7 +506,7 @@ export default function SacredNetworkPage() {
                             e.stopPropagation();
                             leaveCircleMutation.mutate(circle.id);
                           }}
-                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                          className="h-6 w-6 p-0 text-red-400 hover:text-red-300 hover:bg-red-900/30"
                         >
                           ×
                         </Button>
@@ -447,8 +514,8 @@ export default function SacredNetworkPage() {
                     </div>
                   ))}
                   {!circles?.circles.some(circle => circle.is_member) && (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      No circles joined yet.
+                    <p className="text-sm text-purple-400 text-center py-4">
+                      No circles joined yet. Create or join one to begin.
                     </p>
                   )}
                 </CardContent>
@@ -460,59 +527,62 @@ export default function SacredNetworkPage() {
           <div className="lg:col-span-2">
             <div className="space-y-6">
               {/* Post Composer */}
-              <Card>
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
                 <CardContent className="p-4">
                   <div className="flex space-x-3">
-                    <Avatar className="w-10 h-10">
+                    <Avatar className="w-10 h-10 ring-2 ring-purple-400/50">
                       <AvatarImage src={profile?.avatar_url} />
-                      <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
+                      <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                        {profile?.display_name?.charAt(0) || 'SS'}
+                      </AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
                       <Dialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen}>
                         <DialogTrigger asChild>
-                          <div className="bg-gray-100 rounded-lg p-3 cursor-pointer hover:bg-gray-200 transition-colors">
-                            <p className="text-gray-500">
+                          <div className="bg-purple-900/30 rounded-lg p-4 cursor-pointer hover:bg-purple-800/40 transition-all border border-purple-500/20 hover:border-purple-400/40">
+                            <p className="text-purple-300">
                               {selectedCircleData 
-                                ? `Share with ${selectedCircleData.name}...`
-                                : 'Share your spiritual insights with the Sacred Network...'
+                                ? `Share wisdom with ${selectedCircleData.name}...`
+                                : 'Share your sacred insights with the network...'
                               }
                             </p>
                           </div>
                         </DialogTrigger>
-                        <DialogContent className="max-w-2xl">
+                        <DialogContent className="max-w-2xl bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
                           <DialogHeader>
-                            <DialogTitle>
+                            <DialogTitle className="text-purple-100 flex items-center">
+                              <Sparkles className="w-5 h-5 mr-2" />
                               {selectedCircleData 
-                                ? `Create Post in ${selectedCircleData.name}`
-                                : 'Create New Post'
+                                ? `Transmit to ${selectedCircleData.name}`
+                                : 'Create Sacred Transmission'
                               }
                             </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
                             <Textarea
-                              placeholder="What's on your mind?"
+                              placeholder="What sacred wisdom flows through you today?"
                               value={newPostContent}
                               onChange={(e) => setNewPostContent(e.target.value)}
                               rows={6}
-                              className="resize-none"
+                              className="resize-none bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
                             />
                             <div className="flex items-center justify-between">
                               <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
-                                <SelectTrigger className="w-40">
+                                <SelectTrigger className="w-40 bg-black/30 border-purple-500/30 text-purple-100">
                                   <SelectValue />
                                 </SelectTrigger>
-                                <SelectContent>
-                                  <SelectItem value="public">Public</SelectItem>
-                                  <SelectItem value="followers">Followers</SelectItem>
-                                  <SelectItem value="private">Private</SelectItem>
+                                <SelectContent className="bg-purple-900 border-purple-500/30">
+                                  <SelectItem value="public" className="text-purple-100">🌍 Public</SelectItem>
+                                  <SelectItem value="followers" className="text-purple-100">👥 Resonators</SelectItem>
+                                  <SelectItem value="private" className="text-purple-100">🔒 Private</SelectItem>
                                 </SelectContent>
                               </Select>
                               <Button
                                 onClick={handleCreatePost}
                                 disabled={createPostMutation.isPending}
-                                className="bg-purple-600 hover:bg-purple-700"
+                                className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                               >
-                                {createPostMutation.isPending ? 'Posting...' : 'Share'}
+                                {createPostMutation.isPending ? 'Transmitting...' : '✨ Transmit'}
                               </Button>
                             </div>
                           </div>
@@ -525,54 +595,107 @@ export default function SacredNetworkPage() {
 
               {/* Feed Posts */}
               {posts?.posts.map((post) => (
-                <Card key={post.id} className="hover:shadow-md transition-shadow">
-                  <CardContent className="p-4">
-                    <div className="flex space-x-3">
-                      <Avatar className="w-10 h-10">
+                <Card key={post.id} className="bg-black/30 backdrop-blur-lg border-purple-500/30 hover:border-purple-400/50 transition-all">
+                  <CardContent className="p-6">
+                    <div className="flex space-x-4">
+                      <Avatar className="w-12 h-12 ring-2 ring-purple-400/50">
                         <AvatarImage src={post.author?.avatar_url} />
-                        <AvatarFallback>{post.author?.display_name?.charAt(0) || 'U'}</AvatarFallback>
+                        <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                          {post.author?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <div className="flex items-center justify-between mb-2">
+                        <div className="flex items-center justify-between mb-3">
                           <div className="flex items-center space-x-2">
-                            <p className="font-medium text-gray-900">{post.author?.display_name}</p>
-                            <p className="text-sm text-gray-500">@{post.author?.username}</p>
-                            <p className="text-sm text-gray-500">•</p>
-                            <p className="text-sm text-gray-500">{formatTimeAgo(post.created_at)}</p>
+                            <p className="font-medium text-purple-100">{post.author?.display_name}</p>
+                            <p className="text-sm text-purple-400">@{post.author?.username}</p>
+                            <p className="text-sm text-purple-500">•</p>
+                            <p className="text-sm text-purple-400">{formatTimeAgo(post.created_at)}</p>
                             {post.visibility !== 'public' && (
                               <>
-                                <p className="text-sm text-gray-500">•</p>
-                                <Badge variant="outline" className="text-xs capitalize">
-                                  {post.visibility}
+                                <p className="text-sm text-purple-500">•</p>
+                                <Badge variant="outline" className="text-xs capitalize border-purple-400 text-purple-300">
+                                  {post.visibility === 'followers' ? 'Resonators' : post.visibility}
                                 </Badge>
                               </>
                             )}
                           </div>
-                          <Button variant="ghost" size="sm">
+                          <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-200">
                             <MoreHorizontal className="w-4 h-4" />
                           </Button>
                         </div>
-                        <p className="text-gray-800 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
+                        <p className="text-purple-100 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
                         
-                        <div className="flex items-center space-x-6 text-gray-500">
-                          <button 
-                            className={`flex items-center space-x-1 hover:text-red-500 transition-colors ${
-                              post.is_liked ? 'text-red-500' : ''
-                            }`}
-                            onClick={() => toggleLikeMutation.mutate(post.id)}
-                          >
-                            <Heart className={`w-4 h-4 ${post.is_liked ? 'fill-current' : ''}`} />
-                            <span className="text-sm">{post.like_count}</span>
-                          </button>
-                          <button className="flex items-center space-x-1 hover:text-blue-500 transition-colors">
-                            <MessageCircle className="w-4 h-4" />
-                            <span className="text-sm">{post.comment_count}</span>
-                          </button>
-                          <button className="flex items-center space-x-1 hover:text-green-500 transition-colors">
-                            <Share className="w-4 h-4" />
-                            <span className="text-sm">Share</span>
-                          </button>
+                        <div className="flex items-center justify-between text-purple-400 border-t border-purple-500/20 pt-4">
+                          <div className="flex items-center space-x-6">
+                            <button 
+                              className={`flex items-center space-x-2 hover:text-pink-400 transition-colors group ${
+                                post.is_liked ? 'text-pink-400' : ''
+                              }`}
+                              onClick={() => toggleLikeMutation.mutate(post.id)}
+                            >
+                              <Heart className={`w-5 h-5 group-hover:scale-110 transition-transform ${post.is_liked ? 'fill-current' : ''}`} />
+                              <span className="text-sm font-medium">{post.like_count}</span>
+                            </button>
+                            <button 
+                              className="flex items-center space-x-2 hover:text-blue-400 transition-colors group"
+                              onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}
+                            >
+                              <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                              <span className="text-sm font-medium">{post.comment_count}</span>
+                            </button>
+                            <button className="flex items-center space-x-2 hover:text-green-400 transition-colors group">
+                              <Share className="w-5 h-5 group-hover:scale-110 transition-transform" />
+                              <span className="text-sm font-medium">Share</span>
+                            </button>
+                          </div>
+                          <div className="flex items-center space-x-1 text-xs text-purple-500">
+                            <Zap className="w-3 h-3" />
+                            <span>Sacred Network</span>
+                          </div>
                         </div>
+
+                        {/* Comments Section */}
+                        {expandedPost === post.id && (
+                          <div className="mt-6 space-y-4 border-t border-purple-500/20 pt-4">
+                            {/* Comment Input */}
+                            <div className="flex space-x-3">
+                              <Avatar className="w-8 h-8 ring-1 ring-purple-400/50">
+                                <AvatarImage src={profile?.avatar_url} />
+                                <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
+                                  {profile?.display_name?.charAt(0) || 'SS'}
+                                </AvatarFallback>
+                              </Avatar>
+                              <div className="flex-1 flex space-x-2">
+                                <Textarea
+                                  placeholder="Share your reflection..."
+                                  value={newComment}
+                                  onChange={(e) => setNewComment(e.target.value)}
+                                  className="min-h-[60px] bg-purple-900/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400 text-sm resize-none"
+                                  onKeyDown={(e) => {
+                                    if (e.key === 'Enter' && !e.shiftKey) {
+                                      e.preventDefault();
+                                      handleCreateComment(post.id);
+                                    }
+                                  }}
+                                />
+                                <Button
+                                  onClick={() => handleCreateComment(post.id)}
+                                  disabled={!newComment.trim() || createCommentMutation.isPending}
+                                  size="sm"
+                                  className="self-end bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                                >
+                                  <Send className="w-4 h-4" />
+                                </Button>
+                              </div>
+                            </div>
+
+                            {/* Existing Comments Placeholder */}
+                            <div className="text-center py-4">
+                              <p className="text-purple-400 text-sm">Comments will appear here once the backend is connected</p>
+                            </div>
+                          </div>
+                        )}
                       </div>
                     </div>
                   </CardContent>
@@ -580,14 +703,23 @@ export default function SacredNetworkPage() {
               ))}
 
               {(!posts?.posts || posts.posts.length === 0) && (
-                <Card>
-                  <CardContent className="text-center py-12">
-                    <p className="text-gray-500">
+                <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30 border-dashed">
+                  <CardContent className="text-center py-16">
+                    <Sparkles className="w-16 h-16 text-purple-400 mx-auto mb-4" />
+                    <h3 className="text-xl font-medium text-purple-100 mb-2">The Network Awaits</h3>
+                    <p className="text-purple-400 mb-6">
                       {selectedCircleData 
-                        ? `No posts in ${selectedCircleData.name} yet. Be the first to share something!`
-                        : 'No posts yet. Be the first to share something!'
+                        ? `No transmissions in ${selectedCircleData.name} yet. Be the first to share sacred wisdom!`
+                        : 'No transmissions yet. Begin sharing your sacred insights!'
                       }
                     </p>
+                    <Button 
+                      onClick={() => setIsCreatePostOpen(true)}
+                      className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
+                    >
+                      <Sparkles className="w-4 h-4 mr-2" />
+                      Create First Transmission
+                    </Button>
                   </CardContent>
                 </Card>
               )}
@@ -598,53 +730,59 @@ export default function SacredNetworkPage() {
           <div className="lg:col-span-1 hidden lg:block">
             <div className="sticky top-24 space-y-6">
               {/* Network Stats */}
-              <Card>
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Network Stats</CardTitle>
+                  <CardTitle className="text-lg text-purple-100 flex items-center">
+                    <Star className="w-4 h-4 mr-2" />
+                    Network Resonance
+                  </CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Total Posts</span>
-                    <span className="font-medium">{stats?.total_posts || 0}</span>
+                    <span className="text-sm text-purple-400">Sacred Transmissions</span>
+                    <span className="font-medium text-purple-200">{stats?.total_posts || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Active Users</span>
-                    <span className="font-medium">{stats?.total_users || 0}</span>
+                    <span className="text-sm text-purple-400">Conscious Beings</span>
+                    <span className="font-medium text-purple-200">{stats?.total_users || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Sacred Circles</span>
-                    <span className="font-medium">{stats?.total_circles || 0}</span>
+                    <span className="text-sm text-purple-400">Sacred Circles</span>
+                    <span className="font-medium text-purple-200">{stats?.total_circles || 0}</span>
                   </div>
                   <div className="flex justify-between">
-                    <span className="text-sm text-gray-600">Posts Today</span>
-                    <span className="font-medium">{stats?.posts_today || 0}</span>
+                    <span className="text-sm text-purple-400">Today's Flow</span>
+                    <span className="font-medium text-purple-200">{stats?.posts_today || 0}</span>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Discover Circles */}
-              <Card>
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Discover Circles</CardTitle>
+                  <CardTitle className="text-lg text-purple-100 flex items-center">
+                    <Eye className="w-4 h-4 mr-2" />
+                    Discover Circles
+                  </CardTitle>
                 </CardHeader>
-                <CardContent className="space-y-3">
+                <CardContent className="space-y-4">
                   {circles?.circles.filter(circle => !circle.is_member).slice(0, 5).map((circle) => (
-                    <div key={circle.id} className="space-y-2">
+                    <div key={circle.id} className="space-y-3 p-3 rounded-lg bg-purple-900/20 border border-purple-500/20">
                       <div className="flex items-start justify-between">
                         <div className="flex-1">
-                          <h4 className="font-medium text-sm">{circle.name}</h4>
+                          <h4 className="font-medium text-sm text-purple-100">{circle.name}</h4>
                           {circle.description && (
-                            <p className="text-xs text-gray-600 line-clamp-2">
+                            <p className="text-xs text-purple-400 line-clamp-2 mt-1">
                               {circle.description}
                             </p>
                           )}
-                          <div className="flex items-center space-x-2 mt-1">
-                            <Badge variant="outline" className="text-xs">
+                          <div className="flex items-center space-x-2 mt-2">
+                            <Badge variant="outline" className="text-xs border-indigo-400 text-indigo-300">
                               <Users className="w-3 h-3 mr-1" />
                               {circle.member_count}
                             </Badge>
-                            <Badge variant="outline" className="text-xs text-green-600">
-                              Public
+                            <Badge variant="outline" className="text-xs border-green-400 text-green-300">
+                              Open Circle
                             </Badge>
                           </div>
                         </div>
@@ -653,7 +791,7 @@ export default function SacredNetworkPage() {
                           variant="outline"
                           onClick={() => joinCircleMutation.mutate(circle.id)}
                           disabled={joinCircleMutation.isPending}
-                          className="ml-2"
+                          className="ml-2 border-purple-400 text-purple-300 hover:bg-purple-800/50 hover:text-white"
                         >
                           {joinCircleMutation.isPending ? 'Joining...' : 'Join'}
                         </Button>
@@ -661,8 +799,8 @@ export default function SacredNetworkPage() {
                     </div>
                   ))}
                   {!circles?.circles.some(circle => !circle.is_member) && (
-                    <p className="text-sm text-gray-500 text-center py-4">
-                      All circles joined!
+                    <p className="text-sm text-purple-400 text-center py-4">
+                      All circles joined! You're fully connected.
                     </p>
                   )}
                 </CardContent>
@@ -674,51 +812,57 @@ export default function SacredNetworkPage() {
 
       {/* Messages Dialog */}
       <Dialog open={isMessagesOpen} onOpenChange={setIsMessagesOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh]">
+        <DialogContent className="max-w-2xl max-h-[80vh] bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
           <DialogHeader>
-            <DialogTitle>Messages</DialogTitle>
+            <DialogTitle className="text-purple-100 flex items-center">
+              <MessageCircle className="w-5 h-5 mr-2" />
+              Sacred Messages
+            </DialogTitle>
           </DialogHeader>
           <div className="space-y-4">
             <div className="max-h-96 overflow-y-auto space-y-3">
               {messages?.messages.map((message) => (
-                <div key={message.id} className="p-3 bg-gray-50 rounded-lg">
+                <div key={message.id} className="p-3 bg-purple-900/30 rounded-lg border border-purple-500/20">
                   <div className="flex items-center justify-between mb-2">
                     <div className="flex items-center space-x-2">
-                      <Avatar className="w-6 h-6">
-                        <AvatarFallback className="text-xs">
+                      <Avatar className="w-6 h-6 ring-1 ring-purple-400/50">
+                        <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
                           {message.sender?.display_name?.charAt(0) || 'U'}
                         </AvatarFallback>
                       </Avatar>
-                      <p className="font-medium text-sm">{message.sender?.display_name}</p>
+                      <p className="font-medium text-sm text-purple-100">{message.sender?.display_name}</p>
                     </div>
-                    <p className="text-xs text-gray-500">{formatTimeAgo(message.created_at)}</p>
+                    <p className="text-xs text-purple-400">{formatTimeAgo(message.created_at)}</p>
                   </div>
-                  <p className="text-sm text-gray-700">{message.content}</p>
+                  <p className="text-sm text-purple-200">{message.content}</p>
                 </div>
               ))}
               {(!messages?.messages || messages.messages.length === 0) && (
-                <p className="text-center text-gray-500 py-8">No messages yet.</p>
+                <div className="text-center py-8">
+                  <MessageCircle className="w-12 h-12 text-purple-400 mx-auto mb-4" />
+                  <p className="text-purple-400">No sacred messages yet.</p>
+                </div>
               )}
             </div>
             
-            <div className="border-t pt-4">
+            <div className="border-t border-purple-500/20 pt-4">
               <div className="flex space-x-2">
                 <Select value={selectedConversation || ''} onValueChange={setSelectedConversation}>
-                  <SelectTrigger className="w-48">
+                  <SelectTrigger className="w-48 bg-black/30 border-purple-500/30 text-purple-100">
                     <SelectValue placeholder="Select recipient..." />
                   </SelectTrigger>
-                  <SelectContent>
-                    <SelectItem value="user-2">Quantum Mystic</SelectItem>
-                    <SelectItem value="user-3">Dream Weaver</SelectItem>
-                    <SelectItem value="user-4">Light Worker</SelectItem>
-                    <SelectItem value="user-5">Frequency Healer</SelectItem>
+                  <SelectContent className="bg-purple-900 border-purple-500/30">
+                    <SelectItem value="user-2" className="text-purple-100">Quantum Mystic</SelectItem>
+                    <SelectItem value="user-3" className="text-purple-100">Dream Weaver</SelectItem>
+                    <SelectItem value="user-4" className="text-purple-100">Light Worker</SelectItem>
+                    <SelectItem value="user-5" className="text-purple-100">Frequency Healer</SelectItem>
                   </SelectContent>
                 </Select>
                 <Input
-                  placeholder="Type your message..."
+                  placeholder="Type your sacred message..."
                   value={newMessage}
                   onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1"
+                  className="flex-1 bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
                   onKeyPress={(e) => {
                     if (e.key === 'Enter') {
                       handleSendMessage();
@@ -728,8 +872,9 @@ export default function SacredNetworkPage() {
                 <Button
                   onClick={handleSendMessage}
                   disabled={sendMessageMutation.isPending || !newMessage.trim() || !selectedConversation}
+                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
                 >
-                  Send
+                  <Send className="w-4 h-4" />
                 </Button>
               </div>
             </div>
@@ -739,7 +884,7 @@ export default function SacredNetworkPage() {
 
       {/* Floating Messages Button */}
       <Button
-        className="fixed bottom-4 right-4 z-50 rounded-full w-14 h-14 shadow-lg bg-purple-600 hover:bg-purple-700"
+        className="fixed bottom-6 right-6 z-50 rounded-full w-16 h-16 shadow-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-2 border-purple-400/50"
         onClick={() => setIsMessagesOpen(true)}
       >
         <MessageCircle className="w-6 h-6" />
