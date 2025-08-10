@@ -12,6 +12,18 @@ export interface Attachment {
   };
 }
 
+export interface SocialProfileStub {
+  user_id: string;
+  display_name: string;
+  avatar_url: string | null;
+}
+
+export interface RepliedToMessage {
+  id: string;
+  body: string | null;
+  sender: SocialProfileStub;
+}
+
 export interface Message {
   id: string;
   thread_id: string;
@@ -21,11 +33,16 @@ export interface Message {
   created_at: Date;
   edited_at: Date | null;
   reply_to_id: string | null;
+  sender: SocialProfileStub;
+  reply_to?: RepliedToMessage;
 }
 
 export interface ThreadMember {
   user_id: string;
   display_name: string;
+  avatar_url: string | null;
+  role: 'owner' | 'admin' | 'member';
+  last_read_at: Date | null;
 }
 
 export interface Thread {
@@ -35,6 +52,7 @@ export interface Thread {
   created_at: Date;
   members: ThreadMember[];
   last_message: string | null;
+  last_message_created_at: Date | null;
   unread_count: number;
 }
 

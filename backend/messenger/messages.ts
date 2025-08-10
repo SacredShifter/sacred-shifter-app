@@ -15,12 +15,25 @@ interface ListMessagesResponse {
 export const listMessages = api<ListMessagesRequest, ListMessagesResponse>(
   { expose: true, method: "GET", path: "/messenger/threads/:threadId/messages" },
   async ({ threadId }) => {
-    const messages = await db.queryAll<Message>`
+    const messages = await db.rawQueryAll<Message>`
       SELECT
-        id, thread_id, sender_id, body, content, created_at, edited_at, reply_to_id
-      FROM messages
-      WHERE thread_id = ${threadId}
-      ORDER BY created_at ASC
+        m.id, m.thread_id, m.sender_id, m.body, m.content, m.created_at, m.edited_at, m.reply_to_id,
+        row_to_json(s) as sender,
+        (
+          SELECT row_to_json(rm) FROM (
+            SELECT
+              rm_inner.id, rm_inner.body,
+              row_to_json(rms) as sender
+            FROM messages rm_inner
+            JOIN social_profiles rms ON rm_inner.sender_id = rms.user_id
+            WHERE rm_inner.id = m.reply_to_id
+          ) rm
+        ) as reply_to
+      FROM messages m
+      JOIN social_profiles s ON m.sender_id = s.user_id
+      WHERE m.thread_id = ${threadId}
+      ORDER BY m.created_at ASC
+      LIMIT 100
     `;
     return { messages };
   }

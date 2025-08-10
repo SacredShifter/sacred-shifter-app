@@ -2,22 +2,11 @@ import { useState, useEffect, useCallback } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 import backend from '~backend/client'
 import { useToast } from '@/components/ui/use-toast'
-import type { Message, MessageContent } from '~backend/messenger/types'
+import type { Message, MessageContent, Thread, ThreadMember } from '~backend/messenger/types'
 import type { SocialProfile } from '~backend/social/types'
 
-interface MessageWithSender extends Message {
-  sender: SocialProfile;
-  reply_to?: MessageWithSender;
-}
-
-interface ThreadMemberWithUser {
-  user_id: string;
-  role: string;
-  user: SocialProfile;
-}
-
 export function useChat(threadId: string | null) {
-  const [replyTo, setReplyTo] = useState<MessageWithSender | null>(null)
+  const [replyTo, setReplyTo] = useState<Message | null>(null)
   const queryClient = useQueryClient()
   const { toast } = useToast()
 
@@ -27,23 +16,22 @@ export function useChat(threadId: string | null) {
     queryFn: async () => {
       if (!threadId) return []
       const res = await backend.messenger.listMessages({ threadId });
-      // This is a simplification. In a real app, you'd fetch sender profiles separately or join them in the backend.
-      return res.messages.map(m => ({...m, sender: { display_name: 'Sender' } })) as any[];
+      return res.messages;
     },
     enabled: !!threadId,
   })
 
-  // Fetch thread members
-  const { data: members = [], isLoading: membersLoading } = useQuery({
-    queryKey: ['thread-members', threadId],
-    queryFn: async (): Promise<ThreadMemberWithUser[]> => {
-      if (!threadId) return []
-      // This endpoint doesn't exist yet, so we'll mock it.
-      // In a real app, you'd have a `messenger.getThreadMembers` endpoint.
-      return Promise.resolve([]);
+  // Fetch thread details (including members)
+  const { data: threadData, isLoading: threadLoading } = useQuery({
+    queryKey: ['thread', threadId],
+    queryFn: async (): Promise<Thread | null> => {
+      if (!threadId) return null
+      const res = await backend.messenger.get({ threadId });
+      return res.thread;
     },
     enabled: !!threadId,
   })
+  const members = threadData?.members || [];
 
   // Send message
   const sendMessageMutation = useMutation({
@@ -169,16 +157,19 @@ export function useChat(threadId: string | null) {
 
   // Calculate read receipts
   const getReadBy = useCallback((messageCreatedAt: string) => {
+    const messageTime = new Date(messageCreatedAt).getTime();
     return members.filter(member => {
-      // This is a placeholder as last_read_at is not on the member type
-      return false;
+      if (!member.last_read_at) return false;
+      const readTime = new Date(member.last_read_at).getTime();
+      return readTime >= messageTime;
     })
   }, [members])
 
   return {
     messages,
     members,
-    isLoading: messagesLoading || membersLoading,
+    thread: threadData,
+    isLoading: messagesLoading || threadLoading,
     replyTo,
     setReplyTo,
     sendMessage: sendMessageMutation.mutateAsync,

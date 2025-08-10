@@ -24,7 +24,7 @@ export const features = {
 
 // Default user configuration (since no auth)
 export const defaultUser = {
-  id: 'default-user',
+  id: '00000000-0000-0000-0000-000000000000',
   email: 'seeker@sacred-shifter.app',
   username: 'sacred_seeker',
   display_name: 'Sacred Seeker',

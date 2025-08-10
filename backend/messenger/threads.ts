@@ -13,39 +13,77 @@ export const listThreads = api<void, ListThreadsResponse>(
     const userId = "00000000-0000-0000-0000-000000000000"; // default user
 
     const threads = await db.rawQueryAll<Thread>`
+      WITH last_messages AS (
+        SELECT 
+          thread_id, 
+          body, 
+          created_at,
+          ROW_NUMBER() OVER(PARTITION BY thread_id ORDER BY created_at DESC) as rn
+        FROM messages
+      )
       SELECT
         t.id,
         t.is_group,
         t.title,
         t.created_at,
         (
-          SELECT json_agg(json_build_object('user_id', p.user_id, 'display_name', p.display_name))
+          SELECT json_agg(json_build_object(
+            'user_id', p.user_id, 
+            'display_name', p.display_name,
+            'avatar_url', p.avatar_url
+          ))
           FROM thread_members tm
           JOIN social_profiles p ON tm.user_id = p.user_id
           WHERE tm.thread_id = t.id
         ) as members,
-        (
-          SELECT m.body
-          FROM messages m
-          WHERE m.thread_id = t.id
-          ORDER BY m.created_at DESC
-          LIMIT 1
-        ) as last_message,
+        lm.body as last_message,
+        lm.created_at as last_message_created_at,
         (
           SELECT COUNT(*)
           FROM messages m
-          WHERE m.thread_id = t.id AND m.created_at > (
-            SELECT tm.last_read_at FROM thread_members tm
-            WHERE tm.thread_id = t.id AND tm.user_id = ${userId}
-          )
+          WHERE m.thread_id = t.id AND m.created_at > tm_self.last_read_at
         ) as unread_count
       FROM threads t
       JOIN thread_members tm_self ON t.id = tm_self.thread_id
+      LEFT JOIN last_messages lm ON t.id = lm.thread_id AND lm.rn = 1
       WHERE tm_self.user_id = ${userId}
-      ORDER BY (SELECT MAX(m.created_at) FROM messages m WHERE m.thread_id = t.id) DESC
+      ORDER BY lm.created_at DESC NULLS LAST, t.created_at DESC
     `;
 
     return { threads };
+  }
+);
+
+// Gets a single thread by ID.
+export const get = api<{ threadId: string }, { thread: Thread }>(
+  { expose: true, method: "GET", path: "/messenger/threads/:threadId" },
+  async ({ threadId }) => {
+    const userId = "00000000-0000-0000-0000-000000000000"; // default user
+    const thread = await db.rawQueryRow<Thread>`
+      SELECT
+        t.id,
+        t.is_group,
+        t.title,
+        t.created_at,
+        (
+          SELECT json_agg(json_build_object(
+            'user_id', p.user_id, 
+            'display_name', p.display_name,
+            'avatar_url', p.avatar_url,
+            'role', tm.role,
+            'last_read_at', tm.last_read_at
+          ))
+          FROM thread_members tm
+          JOIN social_profiles p ON tm.user_id = p.user_id
+          WHERE tm.thread_id = t.id
+        ) as members
+      FROM threads t
+      WHERE t.id = ${threadId}
+    `;
+    if (!thread) {
+      throw APIError.notFound("thread not found");
+    }
+    return { thread };
   }
 );
 
@@ -61,6 +99,22 @@ export const start = api<StartThreadRequest, { threadId: string }>(
     const createdBy = "00000000-0000-0000-0000-000000000000"; // default user
     const allMemberIds = Array.from(new Set([...memberIds, createdBy]));
     const isGroup = allMemberIds.length > 2;
+
+    // If it's a DM, check if a thread already exists
+    if (!isGroup && allMemberIds.length === 2) {
+      const existingThread = await db.queryRow<{ id: string }>`
+        SELECT tm1.thread_id as id
+        FROM thread_members tm1
+        JOIN thread_members tm2 ON tm1.thread_id = tm2.thread_id
+        JOIN threads t ON t.id = tm1.thread_id
+        WHERE tm1.user_id = ${allMemberIds[0]}
+          AND tm2.user_id = ${allMemberIds[1]}
+          AND t.is_group = false
+      `;
+      if (existingThread) {
+        return { threadId: existingThread.id };
+      }
+    }
 
     const thread = await db.queryRow<{ id: string }>`
       INSERT INTO threads (created_by, is_group, title)

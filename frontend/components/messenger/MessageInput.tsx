@@ -48,15 +48,9 @@ export default function MessageInput({ onSendMessage, disabled, threadId }: Mess
   const handleInputChange = (value: string) => {
     setMessage(value)
     
-    // Set typing indicator
     if (value.trim()) {
       setTyping(true)
-      
-      // Clear typing after 2 seconds of no typing
-      const timeout = setTimeout(() => {
-        setTyping(false)
-      }, 2000)
-      
+      const timeout = setTimeout(() => setTyping(false), 2000)
       return () => clearTimeout(timeout)
     } else {
       setTyping(false)
@@ -109,26 +103,25 @@ export default function MessageInput({ onSendMessage, disabled, threadId }: Mess
   }
 
   return (
-    <div className="border-t border-gray-200 p-4">
-      {/* Attachments preview */}
+    <div className="border-t border-purple-500/20 p-4 bg-black/20">
       {attachments.length > 0 && (
         <div className="mb-3 flex flex-wrap gap-2">
           {attachments.map((attachment, index) => (
-            <div key={index} className="relative bg-gray-100 rounded-lg p-2 flex items-center space-x-2">
+            <div key={index} className="relative bg-gray-800 rounded-lg p-2 flex items-center space-x-2">
               {attachment.type === 'image' && (
                 <img src={attachment.url} alt="" className="w-8 h-8 rounded object-cover" />
               )}
               {attachment.type === 'vigil' && (
-                <div className="w-8 h-8 bg-purple-100 rounded flex items-center justify-center">
+                <div className="w-8 h-8 bg-purple-900 rounded flex items-center justify-center">
                   <span className="text-xs">🔮</span>
                 </div>
               )}
-              <span className="text-sm text-gray-600 truncate max-w-32">
+              <span className="text-sm text-gray-300 truncate max-w-32">
                 {attachment.meta.name}
               </span>
               <button
                 onClick={() => removeAttachment(index)}
-                className="text-gray-400 hover:text-gray-600"
+                className="text-gray-500 hover:text-gray-300"
               >
                 ×
               </button>
@@ -144,7 +137,7 @@ export default function MessageInput({ onSendMessage, disabled, threadId }: Mess
             onChange={(e) => handleInputChange(e.target.value)}
             onKeyDown={handleKeyDown}
             placeholder="Type a message..."
-            className="min-h-[40px] max-h-32 resize-none"
+            className="min-h-[40px] max-h-32 resize-none bg-gray-800 border-gray-700 text-gray-200 placeholder:text-gray-400 focus:border-purple-500"
             disabled={disabled}
           />
         </div>
@@ -164,6 +157,7 @@ export default function MessageInput({ onSendMessage, disabled, threadId }: Mess
             size="sm"
             onClick={() => fileInputRef.current?.click()}
             disabled={disabled || isUploading}
+            className="text-gray-400 hover:text-white"
           >
             <Paperclip className="w-4 h-4" />
           </Button>
@@ -178,7 +172,7 @@ export default function MessageInput({ onSendMessage, disabled, threadId }: Mess
             onClick={handleSend}
             disabled={disabled || (!message.trim() && attachments.length === 0)}
             size="sm"
-            className="bg-purple-600 hover:bg-purple-700"
+            className="bg-purple-600 hover:bg-purple-700 text-white"
           >
             <Send className="w-4 h-4" />
           </Button>
