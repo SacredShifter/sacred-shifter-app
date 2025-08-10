@@ -294,3 +294,114 @@ export default function SacredNetworkPage() {
                         </Avatar>
                         <div>
                           <p className="font-medium text-purple-100">{user.display_name}</p>
+                          <p className="text-xs text-purple-400">@{user.username}</p>
+                        </div>
+                      </div>
+                      <Button 
+                        variant="outline" 
+                        size="sm"
+                        className="border-purple-400 text-purple-300 hover:bg-purple-800/50"
+                      >
+                        Follow
+                      </Button>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+
+              {/* Trending Profiles */}
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
+                <CardHeader>
+                  <CardTitle className="text-purple-100">Trending Beings</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-4">
+                  {trendingProfiles?.profiles.map((user) => (
+                    <div key={user.user_id} className="flex items-center justify-between">
+                      <div 
+                        className="flex items-center space-x-3 cursor-pointer"
+                        onClick={() => handleUserClick(user.user_id)}
+                      >
+                        <Avatar className="w-10 h-10">
+                          <AvatarImage src={user.avatar_url || undefined} />
+                          <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
+                            {user.display_name.charAt(0)}
+                          </AvatarFallback>
+                        </Avatar>
+                        <div>
+                          <p className="font-medium text-purple-100">{user.display_name}</p>
+                          <p className="text-xs text-purple-400">@{user.username}</p>
+                        </div>
+                      </div>
+                      <Badge variant="secondary" className="text-xs">
+                        {user.follower_count} Resonators
+                      </Badge>
+                    </div>
+                  ))}
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        ) : (
+          <div className="grid grid-cols-1 lg:grid-cols-4 gap-6">
+            {/* Left Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
+                <CardHeader>
+                  <CardTitle className="text-purple-100">My Circles</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <ul className="space-y-2">
+                    {myCircles.map((circle) => (
+                      <li key={circle.id}>
+                        <Button
+                          variant="ghost"
+                          onClick={() => setSelectedCircle(circle.id)}
+                          className={`w-full justify-start ${selectedCircle === circle.id ? 'bg-purple-800/50 text-white' : 'text-purple-200 hover:bg-purple-800/50'}`}
+                        >
+                          <Users className="w-4 h-4 mr-2" />
+                          {circle.name}
+                        </Button>
+                      </li>
+                    ))}
+                  </ul>
+                </CardContent>
+              </Card>
+            </div>
+
+            {/* Main Feed */}
+            <div className="lg:col-span-2 space-y-6">
+              <div className="space-y-4">
+                {posts.map((post) => (
+                  <PostCard 
+                    key={post.id} 
+                    post={post} 
+                    onReaction={toggleReaction}
+                  />
+                ))}
+              </div>
+            </div>
+
+            {/* Right Sidebar */}
+            <div className="lg:col-span-1 space-y-6">
+              <Card className="bg-black/30 backdrop-blur-lg border-purple-500/30">
+                <CardHeader>
+                  <CardTitle className="text-purple-100">Messenger</CardTitle>
+                </CardHeader>
+                <CardContent>
+                  <Button 
+                    className="w-full bg-gradient-to-r from-purple-600 to-indigo-600"
+                    onClick={() => setIsMessengerOpen(true)}
+                  >
+                    <MessageCircle className="w-4 h-4 mr-2" />
+                    Open Messenger
+                  </Button>
+                </CardContent>
+              </Card>
+            </div>
+          </div>
+        )}
+      </div>
+      <MessengerDrawer isOpen={isMessengerOpen} onClose={() => setIsMessengerOpen(false)} />
+    </div>
+  );
+}
