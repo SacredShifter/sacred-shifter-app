@@ -240,12 +240,6 @@ export const ProductionIndexes = {
       columns: ["created_at DESC"],
       options: { concurrent: true },
     },
-    {
-      name: "idx_messages_thread_created_prod",
-      table: "messages",
-      columns: ["thread_id", "created_at DESC"],
-      options: { concurrent: true },
-    },
   ],
   ai: [
     {
@@ -272,6 +266,20 @@ export const ProductionIndexes = {
       name: "idx_social_posts_visibility_created_prod",
       table: "social_posts",
       columns: ["visibility", "created_at DESC"],
+      options: { concurrent: true },
+    },
+  ],
+  messenger: [
+    {
+      name: "idx_messages_thread_created_prod",
+      table: "messages",
+      columns: ["thread_id", "created_at DESC"],
+      options: { concurrent: true },
+    },
+    {
+      name: "idx_thread_members_user_prod",
+      table: "thread_members",
+      columns: ["user_id"],
       options: { concurrent: true },
     },
   ],

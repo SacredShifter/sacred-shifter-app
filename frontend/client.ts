@@ -38,6 +38,7 @@ export class Client {
     public readonly community: community.ServiceClient
     public readonly journal: journal.ServiceClient
     public readonly meditation: meditation.ServiceClient
+    public readonly messenger: messenger.ServiceClient
     public readonly social: social.ServiceClient
     public readonly system: system.ServiceClient
     private readonly options: ClientOptions
@@ -59,6 +60,7 @@ export class Client {
         this.community = new community.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
         this.meditation = new meditation.ServiceClient(base)
+        this.messenger = new messenger.ServiceClient(base)
         this.social = new social.ServiceClient(base)
         this.system = new system.ServiceClient(base)
     }
@@ -613,6 +615,166 @@ export namespace meditation {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/start`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_startSession>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import {
+    del as api_messenger_messages_del,
+    edit as api_messenger_messages_edit,
+    listMessages as api_messenger_messages_listMessages,
+    markAsRead as api_messenger_messages_markAsRead,
+    send as api_messenger_messages_send
+} from "~backend/messenger/messages";
+import { events as api_messenger_stream_events } from "~backend/messenger/stream";
+import {
+    addMembers as api_messenger_threads_addMembers,
+    leave as api_messenger_threads_leave,
+    listThreads as api_messenger_threads_listThreads,
+    rename as api_messenger_threads_rename,
+    start as api_messenger_threads_start
+} from "~backend/messenger/threads";
+import { getUploadUrl as api_messenger_upload_getUploadUrl } from "~backend/messenger/upload";
+
+export namespace messenger {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.addMembers = this.addMembers.bind(this)
+            this.del = this.del.bind(this)
+            this.edit = this.edit.bind(this)
+            this.events = this.events.bind(this)
+            this.getUploadUrl = this.getUploadUrl.bind(this)
+            this.leave = this.leave.bind(this)
+            this.listMessages = this.listMessages.bind(this)
+            this.listThreads = this.listThreads.bind(this)
+            this.markAsRead = this.markAsRead.bind(this)
+            this.rename = this.rename.bind(this)
+            this.send = this.send.bind(this)
+            this.start = this.start.bind(this)
+        }
+
+        /**
+         * Adds members to a thread.
+         */
+        public async addMembers(params: RequestType<typeof api_messenger_threads_addMembers>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                userIds: params.userIds,
+            }
+
+            await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/members`, {method: "POST", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Deletes a message.
+         */
+        public async del(params: { messageId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/messenger/messages/${encodeURIComponent(params.messageId)}`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Edits an existing message.
+         */
+        public async edit(params: RequestType<typeof api_messenger_messages_edit>): Promise<ResponseType<typeof api_messenger_messages_edit>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                body:    params.body,
+                content: params.content,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/messages/${encodeURIComponent(params.messageId)}`, {method: "PUT", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_messages_edit>
+        }
+
+        /**
+         * Real-time event stream for messenger
+         */
+        public async events(params: RequestType<typeof api_messenger_stream_events>): Promise<StreamInOut<StreamRequest<typeof api_messenger_stream_events>, StreamResponse<typeof api_messenger_stream_events>>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                threadId: params.threadId,
+            })
+
+            return await this.baseClient.createStreamInOut(`/messenger/events`, {query})
+        }
+
+        /**
+         * Generates a signed URL for uploading a file.
+         */
+        public async getUploadUrl(params: RequestType<typeof api_messenger_upload_getUploadUrl>): Promise<ResponseType<typeof api_messenger_upload_getUploadUrl>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/files/upload-url`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_upload_getUploadUrl>
+        }
+
+        /**
+         * Leaves a thread.
+         */
+        public async leave(params: { threadId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/members/self`, {method: "DELETE", body: undefined})
+        }
+
+        /**
+         * Lists messages for a thread.
+         */
+        public async listMessages(params: { threadId: string }): Promise<ResponseType<typeof api_messenger_messages_listMessages>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/messages`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_messages_listMessages>
+        }
+
+        /**
+         * Lists all threads for the current user.
+         */
+        public async listThreads(): Promise<ResponseType<typeof api_messenger_threads_listThreads>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/threads`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_threads_listThreads>
+        }
+
+        /**
+         * Marks a thread as read.
+         */
+        public async markAsRead(params: { threadId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/read`, {method: "POST", body: undefined})
+        }
+
+        /**
+         * Renames a thread.
+         */
+        public async rename(params: RequestType<typeof api_messenger_threads_rename>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                title: params.title,
+            }
+
+            await this.baseClient.callTypedAPI(`/messenger/threads/${encodeURIComponent(params.threadId)}/rename`, {method: "PUT", body: JSON.stringify(body)})
+        }
+
+        /**
+         * Sends a new message.
+         */
+        public async send(params: RequestType<typeof api_messenger_messages_send>): Promise<ResponseType<typeof api_messenger_messages_send>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/messages`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_messages_send>
+        }
+
+        /**
+         * Starts a new thread.
+         */
+        public async start(params: RequestType<typeof api_messenger_threads_start>): Promise<ResponseType<typeof api_messenger_threads_start>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/messenger/threads`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_messenger_threads_start>
         }
     }
 }

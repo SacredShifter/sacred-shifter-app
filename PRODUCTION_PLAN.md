@@ -12,7 +12,6 @@ This document outlines the complete implementation plan to get Sacred Shifter fr
 - **AI Integration**: OpenRouter API integration with Aether assistant
 - **Module Health System**: Real-time health monitoring for all services
 - **Sacred Network**: Social features with Supabase integration
-- **Messenger System**: Real-time messaging with presence indicators
 
 ### ⚠️ Areas Needing Production Readiness
 1. **Environment Configuration**
@@ -23,6 +22,7 @@ This document outlines the complete implementation plan to get Sacred Shifter fr
 6. **Deployment Infrastructure**
 7. **Testing Coverage**
 8. **Documentation**
+9. **Real-time Messenger Backend**
 
 ## Phase 1: Core Infrastructure (Week 1-2)
 
@@ -96,11 +96,13 @@ This document outlines the complete implementation plan to get Sacred Shifter fr
 - [ ] Create user profile pages
 
 #### Messenger Enhancements
-- [x] Complete file sharing in messages
+- [ ] Implement backend service for messaging using Encore.ts
+- [ ] Implement real-time messaging via WebSockets
+- [ ] Complete file sharing in messages
 - [ ] Add voice message support
 - [ ] Implement message search
 - [ ] Add message encryption
-- [x] Create group chat management
+- [ ] Create group chat management
 
 ### 2.3 Analytics & Insights
 

@@ -11,7 +11,6 @@ import CodexPage from './pages/CodexPage';
 import MeditationPage from './pages/MeditationPage';
 import CommunityPage from './pages/CommunityPage';
 import SacredNetworkPage from './pages/SacredNetworkPage';
-import SupabaseTestPage from './pages/SupabaseTestPage';
 
 const queryClient = new QueryClient();
 
@@ -29,7 +28,6 @@ export default function App() {
             <Route path="/meditation" element={<Layout><MeditationPage /></Layout>} />
             <Route path="/community" element={<Layout><CommunityPage /></Layout>} />
             <Route path="/network" element={<SacredNetworkPage />} />
-            <Route path="/supabase-test" element={<SupabaseTestPage />} />
           </Routes>
           <Toaster />
         </MeditationProvider>

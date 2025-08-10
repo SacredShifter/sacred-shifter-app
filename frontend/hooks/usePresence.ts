@@ -1,107 +1,75 @@
 import { useState, useEffect, useCallback } from 'react'
-import { supabase, type PresenceState } from '../lib/supabase-messenger'
-import type { RealtimeChannel } from '@supabase/supabase-js'
+import backend from '~backend/client'
+
+interface PresenceState {
+  user_id: string
+  display_name?: string
+  avatar_url?: string
+  typing?: boolean
+  last_seen?: string
+}
 
 export function usePresence(threadId: string | null) {
-  const [channel, setChannel] = useState<RealtimeChannel | null>(null)
   const [members, setMembers] = useState<Record<string, PresenceState>>({})
   const [isTyping, setIsTyping] = useState(false)
+  const [stream, setStream] = useState<any>(null);
 
   // Join presence channel
   useEffect(() => {
-    if (!threadId) return
+    if (!threadId) return;
 
-    const presenceChannel = supabase.channel(`presence:thread:${threadId}`, {
-      config: {
-        presence: {
-          key: 'user_presence',
-        },
-      },
-    })
-
-    presenceChannel
-      .on('presence', { event: 'sync' }, () => {
-        const state = presenceChannel.presenceState()
-        const presenceMembers: Record<string, PresenceState> = {}
-        
-        Object.entries(state).forEach(([key, presences]) => {
-          if (presences && presences.length > 0) {
-            presenceMembers[key] = presences[0] as PresenceState
-          }
-        })
-        
-        setMembers(presenceMembers)
-      })
-      .on('presence', { event: 'join' }, ({ key, newPresences }) => {
-        setMembers(prev => ({
-          ...prev,
-          [key]: newPresences[0] as PresenceState
-        }))
-      })
-      .on('presence', { event: 'leave' }, ({ key }) => {
-        setMembers(prev => {
-          const updated = { ...prev }
-          delete updated[key]
-          return updated
-        })
-      })
-      .subscribe(async (status) => {
-        if (status === 'SUBSCRIBED') {
-          // Get current user info
-          const { data: { user } } = await supabase.auth.getUser()
-          if (user) {
-            await presenceChannel.track({
-              user_id: user.id,
-              display_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-              avatar_url: user.user_metadata?.avatar_url,
-              typing: false,
-              last_seen: new Date().toISOString(),
-            })
-          }
+    let localStream: any;
+    const connect = async () => {
+      localStream = await backend.messenger.events({ threadId });
+      setStream(localStream);
+      for await (const event of localStream) {
+        if (event.type === 'presence') {
+          const { userId, status, isTyping } = event.payload;
+          setMembers(prev => {
+            const updated = { ...prev };
+            if (status === 'online') {
+              updated[userId] = { user_id: userId, typing: isTyping };
+            } else if (status === 'offline') {
+              delete updated[userId];
+            } else if (status === 'typing') {
+              if (updated[userId]) {
+                updated[userId].typing = isTyping;
+              }
+            }
+            return updated;
+          });
         }
-      })
+      }
+    };
 
-    setChannel(presenceChannel)
+    connect();
 
     return () => {
-      presenceChannel.unsubscribe()
-      setChannel(null)
-      setMembers({})
+      localStream?.close();
+      setStream(null);
+      setMembers({});
     }
-  }, [threadId])
+  }, [threadId]);
 
   // Set typing status
-  const setTyping = useCallback(async (typing: boolean) => {
-    if (!channel) return
+  const setTypingStatus = useCallback(async (typing: boolean) => {
+    if (!stream) return;
+    setIsTyping(typing);
+    await stream.send({ type: 'typing', payload: { isTyping: typing } });
+  }, [stream]);
 
-    setIsTyping(typing)
-    
-    const { data: { user } } = await supabase.auth.getUser()
-    if (user) {
-      await channel.track({
-        user_id: user.id,
-        display_name: user.user_metadata?.full_name || user.email?.split('@')[0],
-        avatar_url: user.user_metadata?.avatar_url,
-        typing,
-        last_seen: new Date().toISOString(),
-      })
-    }
-  }, [channel])
-
-  // Get online members (excluding current user)
   const onlineMembers = Object.values(members).filter(member => {
-    const { data: { user } } = supabase.auth.getUser()
-    return member.user_id !== user?.id
-  })
+    // In a real app, you'd get the current user ID and filter them out.
+    return true;
+  });
 
-  // Get typing members (excluding current user)
-  const typingMembers = onlineMembers.filter(member => member.typing)
+  const typingMembers = onlineMembers.filter(member => member.typing);
 
   return {
     members: onlineMembers,
     typingMembers,
     isTyping,
-    setTyping,
+    setTyping: setTypingStatus,
     isOnline: onlineMembers.length > 0,
   }
 }

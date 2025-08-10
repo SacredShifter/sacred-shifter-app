@@ -6,6 +6,7 @@ import { communityDB } from '../community/db';
 import { journalDB } from '../journal/db';
 import { meditationDB } from '../meditation/db';
 import { socialDB } from '../social/db';
+import { db as messengerDB } from '../messenger/db';
 
 async function applyIndexesForModule(
   db: SQLDatabase,
@@ -45,6 +46,7 @@ async function main() {
   await applyIndexesForModule(journalDB, 'journal', ProductionIndexes.journal, details, dbManager);
   await applyIndexesForModule(meditationDB, 'meditation', ProductionIndexes.meditation, details, dbManager);
   await applyIndexesForModule(socialDB, 'social', ProductionIndexes.social, details, dbManager);
+  await applyIndexesForModule(messengerDB, 'messenger', ProductionIndexes.messenger, details, dbManager);
   
   details.push('\nProduction database indexes application complete.');
   console.log(details.join('\n'));

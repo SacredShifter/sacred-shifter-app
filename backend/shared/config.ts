@@ -47,8 +47,15 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
     name: 'social',
     version: '1.0.0',
     database_name: 'sacred_social',
-    features: ['posts', 'comments', 'circles', 'messages', 'profiles'],
+    features: ['posts', 'comments', 'circles', 'profiles'],
     dependencies: ['ai']
+  },
+  messenger: {
+    name: 'messenger',
+    version: '1.0.0',
+    database_name: 'sacred_social', // Uses the social DB
+    features: ['threads', 'messages', 'realtime'],
+    dependencies: ['social']
   }
 };
 
