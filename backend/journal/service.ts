@@ -1,4 +1,4 @@
-import { SQLDatabase } from "encore.dev/storage/sqldb";
+import { journalDB } from "./db";
 import { ModuleError, handleModuleError } from "../shared/errors";
 import { getModuleConfig } from "../shared/config";
 import type { 
@@ -11,18 +11,11 @@ import type {
 } from "./types";
 
 export class JournalService {
-  private db: SQLDatabase;
   private readonly MODULE_NAME = 'journal';
-
-  constructor() {
-    this.db = new SQLDatabase("sacred_journal", {
-      migrations: "./migrations",
-    });
-  }
 
   async createEntry(userId: string, request: CreateJournalEntryRequest): Promise<JournalEntry> {
     try {
-      const entry = await this.db.queryRow<JournalEntry>`
+      const entry = await journalDB.queryRow<JournalEntry>`
         INSERT INTO journal_entries (
           user_id, title, content, tags, mood, weather, location
         )
@@ -92,7 +85,7 @@ export class JournalService {
         RETURNING id, user_id, title, content, tags, mood, weather, location, created_at, updated_at
       `;
 
-      const entry = await this.db.rawQueryRow<JournalEntry>(query, ...updateValues);
+      const entry = await journalDB.rawQueryRow<JournalEntry>(query, ...updateValues);
 
       if (!entry) {
         throw new ModuleError(this.MODULE_NAME, 'updateEntry', 'Journal entry not found');
@@ -106,7 +99,7 @@ export class JournalService {
 
   async deleteEntry(userId: string, entryId: string): Promise<void> {
     try {
-      await this.db.exec`
+      await journalDB.exec`
         DELETE FROM journal_entries
         WHERE id = ${entryId} AND user_id = ${userId}
       `;
@@ -117,7 +110,7 @@ export class JournalService {
 
   async getEntry(userId: string, entryId: string): Promise<JournalEntry | null> {
     try {
-      const entry = await this.db.queryRow<JournalEntry>`
+      const entry = await journalDB.queryRow<JournalEntry>`
         SELECT id, user_id, title, content, tags, mood, weather, location, created_at, updated_at
         FROM journal_entries
         WHERE id = ${entryId} AND user_id = ${userId}
@@ -166,7 +159,7 @@ export class JournalService {
 
       // Get total count
       const countQuery = `SELECT COUNT(*) as total FROM journal_entries WHERE ${whereClause}`;
-      const countResult = await this.db.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
+      const countResult = await journalDB.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
       const total = countResult?.total || 0;
 
       // Get entries
@@ -178,7 +171,7 @@ export class JournalService {
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      const entries = await this.db.rawQueryAll<JournalEntry>(
+      const entries = await journalDB.rawQueryAll<JournalEntry>(
         entriesQuery, 
         ...queryParams, 
         limit, 
@@ -198,7 +191,7 @@ export class JournalService {
   async getAnalytics(userId: string): Promise<JournalAnalytics> {
     try {
       // Basic stats
-      const basicStats = await this.db.queryRow<{
+      const basicStats = await journalDB.queryRow<{
         total_entries: number;
         entries_this_week: number;
         entries_this_month: number;
@@ -214,7 +207,7 @@ export class JournalService {
       `;
 
       // Most common tags
-      const tagStats = await this.db.queryAll<{ tag: string; count: number }>`
+      const tagStats = await journalDB.queryAll<{ tag: string; count: number }>`
         SELECT tag, COUNT(*) as count
         FROM journal_entries, UNNEST(tags) as tag
         WHERE user_id = ${userId}
@@ -224,7 +217,7 @@ export class JournalService {
       `;
 
       // Calculate writing streak
-      const streakData = await this.db.queryAll<{ entry_date: Date }>`
+      const streakData = await journalDB.queryAll<{ entry_date: Date }>`
         SELECT DISTINCT DATE(created_at) as entry_date
         FROM journal_entries
         WHERE user_id = ${userId}
@@ -285,7 +278,7 @@ export class JournalService {
 
   async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: string }> {
     try {
-      await this.db.queryRow`SELECT 1`;
+      await journalDB.queryRow`SELECT 1`;
       return { status: 'healthy', details: 'Database connection successful' };
     } catch (error) {
       return { 

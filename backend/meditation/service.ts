@@ -1,4 +1,4 @@
-import { SQLDatabase } from "encore.dev/storage/sqldb";
+import { meditationDB } from "./db";
 import { ModuleError, handleModuleError } from "../shared/errors";
 import { getModuleConfig } from "../shared/config";
 import type { 
@@ -12,26 +12,19 @@ import type {
 } from "./types";
 
 export class MeditationService {
-  private db: SQLDatabase;
   private readonly MODULE_NAME = 'meditation';
-
-  constructor() {
-    this.db = new SQLDatabase("sacred_meditation", {
-      migrations: "./migrations",
-    });
-  }
 
   async startSession(userId: string, request: StartSessionRequest): Promise<MeditationSession> {
     try {
       // End any existing active sessions first
-      await this.db.exec`
+      await meditationDB.exec`
         UPDATE meditation_sessions
         SET completed = TRUE, ended_at = NOW(),
             duration_seconds = EXTRACT(EPOCH FROM (NOW() - started_at))::INTEGER
         WHERE user_id = ${userId} AND completed = FALSE
       `;
 
-      const session = await this.db.queryRow<MeditationSession>`
+      const session = await meditationDB.queryRow<MeditationSession>`
         INSERT INTO meditation_sessions (
           user_id, soundscape, mood_before, notes
         )
@@ -54,7 +47,7 @@ export class MeditationService {
 
   async endSession(userId: string, request: EndSessionRequest): Promise<MeditationSession> {
     try {
-      const session = await this.db.queryRow<MeditationSession>`
+      const session = await meditationDB.queryRow<MeditationSession>`
         UPDATE meditation_sessions
         SET 
           ended_at = NOW(),
@@ -79,7 +72,7 @@ export class MeditationService {
 
   async getCurrentSession(userId: string): Promise<CurrentSessionResponse> {
     try {
-      const session = await this.db.queryRow<MeditationSession>`
+      const session = await meditationDB.queryRow<MeditationSession>`
         SELECT id, user_id, soundscape, duration_seconds, completed, 
                started_at, ended_at, notes, mood_before, mood_after, created_at, updated_at
         FROM meditation_sessions
@@ -131,7 +124,7 @@ export class MeditationService {
 
       // Get total count
       const countQuery = `SELECT COUNT(*) as total FROM meditation_sessions WHERE ${whereClause}`;
-      const countResult = await this.db.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
+      const countResult = await meditationDB.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
       const total = countResult?.total || 0;
 
       // Get sessions
@@ -144,7 +137,7 @@ export class MeditationService {
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      const sessions = await this.db.rawQueryAll<MeditationSession>(
+      const sessions = await meditationDB.rawQueryAll<MeditationSession>(
         sessionsQuery, 
         ...queryParams, 
         limit, 
@@ -164,7 +157,7 @@ export class MeditationService {
   async getAnalytics(userId: string): Promise<MeditationAnalytics> {
     try {
       // Basic stats
-      const basicStats = await this.db.queryRow<{
+      const basicStats = await meditationDB.queryRow<{
         total_sessions: number;
         completed_sessions: number;
         total_meditation_time: number;
@@ -183,7 +176,7 @@ export class MeditationService {
       `;
 
       // Favorite soundscape
-      const favoriteSoundscape = await this.db.queryRow<{ soundscape: string }>`
+      const favoriteSoundscape = await meditationDB.queryRow<{ soundscape: string }>`
         SELECT soundscape
         FROM meditation_sessions
         WHERE user_id = ${userId} AND completed = TRUE
@@ -193,7 +186,7 @@ export class MeditationService {
       `;
 
       // Recent stats
-      const recentStats = await this.db.queryRow<{
+      const recentStats = await meditationDB.queryRow<{
         sessions_this_week: number;
         sessions_this_month: number;
       }>`
@@ -205,7 +198,7 @@ export class MeditationService {
       `;
 
       // Soundscape breakdown
-      const soundscapeBreakdown = await this.db.queryAll<{
+      const soundscapeBreakdown = await meditationDB.queryAll<{
         soundscape: string;
         count: number;
         total_duration: number;
@@ -223,7 +216,7 @@ export class MeditationService {
       `;
 
       // Weekly progress
-      const weeklyProgress = await this.db.queryAll<{
+      const weeklyProgress = await meditationDB.queryAll<{
         week_start: Date;
         session_count: number;
         total_duration: number;
@@ -244,7 +237,7 @@ export class MeditationService {
       `;
 
       // Calculate streaks
-      const streakData = await this.db.queryAll<{ session_date: Date }>`
+      const streakData = await meditationDB.queryAll<{ session_date: Date }>`
         SELECT DISTINCT DATE(started_at) as session_date
         FROM meditation_sessions
         WHERE user_id = ${userId} AND completed = TRUE
@@ -310,7 +303,7 @@ export class MeditationService {
 
   async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: string }> {
     try {
-      await this.db.queryRow`SELECT 1`;
+      await meditationDB.queryRow`SELECT 1`;
       return { status: 'healthy', details: 'Database connection successful' };
     } catch (error) {
       return { 

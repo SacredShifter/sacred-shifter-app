@@ -1,4 +1,4 @@
-import { SQLDatabase } from "encore.dev/storage/sqldb";
+import { codexDB } from "./db";
 import { ModuleError, handleModuleError } from "../shared/errors";
 import type {
   CodexEntry,
@@ -15,18 +15,11 @@ import type {
 } from "./types";
 
 export class CodexService {
-  private db: SQLDatabase;
   private readonly MODULE_NAME = 'codex';
-
-  constructor() {
-    this.db = new SQLDatabase("sacred_codex", {
-      migrations: "./migrations",
-    });
-  }
 
   async createEntry(userId: string, request: CreateCodexEntryRequest): Promise<CodexEntry> {
     try {
-      const entry = await this.db.queryRow<CodexEntry>`
+      const entry = await codexDB.queryRow<CodexEntry>`
         INSERT INTO resonant_codex_entries (
           owner_id, mode, title, content, entry_type, tags, 
           resonance_rating, resonance_signature, resonance_channels, 
@@ -130,7 +123,7 @@ export class CodexService {
                   is_verified, parent_id, created_at, updated_at
       `;
 
-      const entry = await this.db.rawQueryRow<CodexEntry>(query, ...updateValues);
+      const entry = await codexDB.rawQueryRow<CodexEntry>(query, ...updateValues);
 
       if (!entry) {
         throw new ModuleError(this.MODULE_NAME, 'updateEntry', 'Codex entry not found');
@@ -149,7 +142,7 @@ export class CodexService {
 
   async deleteEntry(userId: string, entryId: string): Promise<void> {
     try {
-      await this.db.exec`
+      await codexDB.exec`
         DELETE FROM resonant_codex_entries
         WHERE id = ${entryId} AND owner_id = ${userId}
       `;
@@ -160,7 +153,7 @@ export class CodexService {
 
   async getEntry(userId: string, entryId: string): Promise<CodexEntry | null> {
     try {
-      const entry = await this.db.queryRow<CodexEntry>`
+      const entry = await codexDB.queryRow<CodexEntry>`
         SELECT id, owner_id, mode, title, content, entry_type, tags,
                resonance_rating, resonance_signature, resonance_channels,
                occurred_at, context, ai_summary, ai_labels, visibility,
@@ -261,7 +254,7 @@ export class CodexService {
 
       // Get total count
       const countQuery = `SELECT COUNT(*) as total FROM resonant_codex_entries WHERE ${whereClause}`;
-      const countResult = await this.db.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
+      const countResult = await codexDB.rawQueryRow<{ total: number }>(countQuery, ...queryParams);
       const total = countResult?.total || 0;
 
       // Get entries
@@ -280,7 +273,7 @@ export class CodexService {
         LIMIT $${paramIndex} OFFSET $${paramIndex + 1}
       `;
 
-      const entries = await this.db.rawQueryAll<CodexEntry>(
+      const entries = await codexDB.rawQueryAll<CodexEntry>(
         entriesQuery,
         ...queryParams,
         limit,
@@ -300,7 +293,7 @@ export class CodexService {
   async shareEntry(userId: string, request: ShareCodexEntryRequest): Promise<void> {
     try {
       // Verify user owns the entry
-      const entry = await this.db.queryRow`
+      const entry = await codexDB.queryRow`
         SELECT id FROM resonant_codex_entries
         WHERE id = ${request.entry_id} AND owner_id = ${userId}
       `;
@@ -309,7 +302,7 @@ export class CodexService {
         throw new ModuleError(this.MODULE_NAME, 'shareEntry', 'Entry not found or access denied');
       }
 
-      await this.db.exec`
+      await codexDB.exec`
         INSERT INTO resonant_codex_shares (entry_id, user_id, can_edit)
         VALUES (${request.entry_id}, ${request.user_id}, ${request.can_edit || false})
         ON CONFLICT (entry_id, user_id) 
@@ -322,7 +315,7 @@ export class CodexService {
 
   async unshareEntry(userId: string, entryId: string, targetUserId: string): Promise<void> {
     try {
-      await this.db.exec`
+      await codexDB.exec`
         DELETE FROM resonant_codex_shares
         WHERE entry_id = ${entryId} 
           AND user_id = ${targetUserId}
@@ -338,7 +331,7 @@ export class CodexService {
 
   async reactToEntry(userId: string, request: ReactToCodexEntryRequest): Promise<void> {
     try {
-      await this.db.exec`
+      await codexDB.exec`
         INSERT INTO resonant_codex_reactions (entry_id, user_id, kind)
         VALUES (${request.entry_id}, ${userId}, ${request.kind})
         ON CONFLICT (entry_id, user_id) DO NOTHING
@@ -366,7 +359,7 @@ export class CodexService {
         modeParams = [request.mode];
       }
 
-      const similarEntries = await this.db.rawQueryAll<CodexEntry & { matching_tag_count: number }>(
+      const similarEntries = await codexDB.rawQueryAll<CodexEntry & { matching_tag_count: number }>(
         `SELECT id, owner_id, mode, title, content, entry_type, tags,
                 resonance_rating, resonance_signature, resonance_channels,
                 occurred_at, context, ai_summary, ai_labels, visibility,
@@ -431,7 +424,7 @@ export class CodexService {
   async getAnalytics(userId: string): Promise<CodexAnalytics> {
     try {
       // Basic stats
-      const basicStats = await this.db.queryRow<{
+      const basicStats = await codexDB.queryRow<{
         total_entries: number;
         codex_entries: number;
         register_entries: number;
@@ -455,7 +448,7 @@ export class CodexService {
       `;
 
       // Most common tags
-      const tagStats = await this.db.queryAll<{ tag: string; count: number }>`
+      const tagStats = await codexDB.queryAll<{ tag: string; count: number }>`
         SELECT tag, COUNT(*) as count
         FROM resonant_codex_entries, UNNEST(tags) as tag
         WHERE owner_id = ${userId}
@@ -465,7 +458,7 @@ export class CodexService {
       `;
 
       // Entry types
-      const typeStats = await this.db.queryAll<{ type: string; count: number }>`
+      const typeStats = await codexDB.queryAll<{ type: string; count: number }>`
         SELECT entry_type as type, COUNT(*) as count
         FROM resonant_codex_entries
         WHERE owner_id = ${userId} AND entry_type IS NOT NULL
@@ -474,7 +467,7 @@ export class CodexService {
       `;
 
       // Resonance distribution
-      const resonanceStats = await this.db.queryAll<{ range: string; count: number }>`
+      const resonanceStats = await codexDB.queryAll<{ range: string; count: number }>`
         SELECT 
           CASE 
             WHEN resonance_rating >= 0.8 THEN 'High (0.8-1.0)'
@@ -521,7 +514,7 @@ export class CodexService {
       const summary = this.generateSummary(body);
       const labels = this.generateLabels(body, tags);
 
-      await this.db.exec`
+      await codexDB.exec`
         UPDATE resonant_codex_entries
         SET ai_summary = ${summary}, ai_labels = ${labels}
         WHERE id = ${entryId}
@@ -571,7 +564,7 @@ export class CodexService {
 
   async healthCheck(): Promise<{ status: 'healthy' | 'unhealthy'; details: string }> {
     try {
-      await this.db.queryRow`SELECT 1`;
+      await codexDB.queryRow`SELECT 1`;
       return { status: 'healthy', details: 'Database connection successful' };
     } catch (error) {
       return {
