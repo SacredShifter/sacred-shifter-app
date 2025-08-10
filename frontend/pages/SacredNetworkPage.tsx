@@ -1,6 +1,6 @@
 import { useState } from 'react';
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
-import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal } from 'lucide-react';
+import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal, Eye } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
 import { Textarea } from '@/components/ui/textarea';
@@ -21,13 +21,17 @@ export default function SacredNetworkPage() {
   const [newCircleName, setNewCircleName] = useState('');
   const [newCircleDescription, setNewCircleDescription] = useState('');
   const [isCreateCircleOpen, setIsCreateCircleOpen] = useState(false);
+  const [selectedCircle, setSelectedCircle] = useState<string | null>(null);
+  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
+  const [newMessage, setNewMessage] = useState('');
+  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
   const { toast } = useToast();
   const queryClient = useQueryClient();
 
-  // Fetch data
+  // Fetch data using the actual Sacred Shifter backend
   const { data: posts, isLoading: postsLoading } = useQuery({
-    queryKey: ['social-posts'],
-    queryFn: () => backend.social.listPosts(),
+    queryKey: ['social-posts', selectedCircle],
+    queryFn: () => backend.social.listPosts(selectedCircle ? { circle_id: selectedCircle } : {}),
   });
 
   const { data: circles } = useQuery({
@@ -45,12 +49,19 @@ export default function SacredNetworkPage() {
     queryFn: () => backend.social.getStats(),
   });
 
+  const { data: messages } = useQuery({
+    queryKey: ['social-messages'],
+    queryFn: () => backend.social.listMessages(),
+    enabled: isMessagesOpen,
+  });
+
   // Mutations
   const createPostMutation = useMutation({
-    mutationFn: (data: { content: string; visibility: 'public' | 'followers' | 'private' }) =>
+    mutationFn: (data: { content: string; visibility: 'public' | 'followers' | 'private'; circle_id?: string }) =>
       backend.social.createPost(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+      queryClient.invalidateQueries({ queryKey: ['social-stats'] });
       setNewPostContent('');
       setIsCreatePostOpen(false);
       toast({
@@ -73,6 +84,14 @@ export default function SacredNetworkPage() {
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-posts'] });
     },
+    onError: (error) => {
+      console.error('Failed to toggle like:', error);
+      toast({
+        title: "Error",
+        description: "Failed to update like. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const createCircleMutation = useMutation({
@@ -80,6 +99,7 @@ export default function SacredNetworkPage() {
       backend.social.createCircle(data),
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-circles'] });
+      queryClient.invalidateQueries({ queryKey: ['social-stats'] });
       setNewCircleName('');
       setNewCircleDescription('');
       setIsCreateCircleOpen(false);
@@ -107,6 +127,57 @@ export default function SacredNetworkPage() {
         description: "You've joined the circle!",
       });
     },
+    onError: (error) => {
+      console.error('Failed to join circle:', error);
+      toast({
+        title: "Error",
+        description: "Failed to join circle. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const leaveCircleMutation = useMutation({
+    mutationFn: (circleId: string) => backend.social.leaveCircle({ circle_id: circleId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-circles'] });
+      if (selectedCircle) {
+        setSelectedCircle(null);
+      }
+      toast({
+        title: "Success",
+        description: "You've left the circle.",
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to leave circle:', error);
+      toast({
+        title: "Error",
+        description: "Failed to leave circle. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const sendMessageMutation = useMutation({
+    mutationFn: (data: { recipient_id: string; content: string }) =>
+      backend.social.sendMessage(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-messages'] });
+      setNewMessage('');
+      toast({
+        title: "Success",
+        description: "Message sent!",
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to send message:', error);
+      toast({
+        title: "Error",
+        description: "Failed to send message. Please try again.",
+        variant: "destructive",
+      });
+    },
   });
 
   const handleCreatePost = () => {
@@ -122,6 +193,7 @@ export default function SacredNetworkPage() {
     createPostMutation.mutate({
       content: newPostContent,
       visibility: newPostVisibility,
+      circle_id: selectedCircle || undefined,
     });
   };
 
@@ -142,6 +214,22 @@ export default function SacredNetworkPage() {
     });
   };
 
+  const handleSendMessage = () => {
+    if (!newMessage.trim() || !selectedConversation) {
+      toast({
+        title: "Error",
+        description: "Please write a message and select a recipient.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    sendMessageMutation.mutate({
+      recipient_id: selectedConversation,
+      content: newMessage,
+    });
+  };
+
   const formatTimeAgo = (dateString: string) => {
     const date = new Date(dateString);
     const now = new Date();
@@ -151,6 +239,8 @@ export default function SacredNetworkPage() {
     if (diffInHours < 24) return `${diffInHours}h ago`;
     return `${Math.floor(diffInHours / 24)}d ago`;
   };
+
+  const selectedCircleData = circles?.circles.find(c => c.id === selectedCircle);
 
   if (postsLoading) {
     return (
@@ -191,6 +281,19 @@ export default function SacredNetworkPage() {
                 <h1 className="text-xl font-bold bg-gradient-to-r from-purple-600 to-indigo-600 bg-clip-text text-transparent">
                   Sacred Network
                 </h1>
+                {selectedCircleData && (
+                  <div className="flex items-center space-x-2">
+                    <span className="text-gray-400">•</span>
+                    <Badge variant="outline">{selectedCircleData.name}</Badge>
+                    <Button
+                      variant="ghost"
+                      size="sm"
+                      onClick={() => setSelectedCircle(null)}
+                    >
+                      <X className="w-4 h-4" />
+                    </Button>
+                  </div>
+                )}
               </div>
             </div>
 
@@ -295,19 +398,52 @@ export default function SacredNetworkPage() {
                   </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
+                  {/* All Posts Option */}
+                  <div
+                    className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                      !selectedCircle ? 'bg-purple-50 border border-purple-200' : 'hover:bg-gray-50'
+                    }`}
+                    onClick={() => setSelectedCircle(null)}
+                  >
+                    <div className="flex items-center space-x-2">
+                      <div className="w-3 h-3 rounded-full bg-purple-500" />
+                      <span className="font-medium text-sm">All Posts</span>
+                    </div>
+                    <Badge variant="outline" className="text-xs">
+                      {posts?.total || 0}
+                    </Badge>
+                  </div>
+
+                  {/* User's Circles */}
                   {circles?.circles.filter(circle => circle.is_member).map((circle) => (
                     <div
                       key={circle.id}
-                      className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
+                      className={`flex items-center justify-between p-2 rounded-lg cursor-pointer transition-colors ${
+                        selectedCircle === circle.id ? 'bg-blue-50 border border-blue-200' : 'hover:bg-gray-50'
+                      }`}
+                      onClick={() => setSelectedCircle(circle.id)}
                     >
                       <div className="flex items-center space-x-2">
                         <div className="w-3 h-3 rounded-full bg-green-500" />
                         <span className="font-medium text-sm">{circle.name}</span>
                       </div>
-                      <Badge variant="outline" className="text-xs">
-                        <Users className="w-3 h-3 mr-1" />
-                        {circle.member_count}
-                      </Badge>
+                      <div className="flex items-center space-x-1">
+                        <Badge variant="outline" className="text-xs">
+                          <Users className="w-3 h-3 mr-1" />
+                          {circle.member_count}
+                        </Badge>
+                        <Button
+                          variant="ghost"
+                          size="sm"
+                          onClick={(e) => {
+                            e.stopPropagation();
+                            leaveCircleMutation.mutate(circle.id);
+                          }}
+                          className="h-6 w-6 p-0 text-red-500 hover:text-red-700"
+                        >
+                          ×
+                        </Button>
+                      </div>
                     </div>
                   ))}
                   {!circles?.circles.some(circle => circle.is_member) && (
@@ -335,12 +471,22 @@ export default function SacredNetworkPage() {
                       <Dialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen}>
                         <DialogTrigger asChild>
                           <div className="bg-gray-100 rounded-lg p-3 cursor-pointer hover:bg-gray-200 transition-colors">
-                            <p className="text-gray-500">Share your spiritual insights with the Sacred Network...</p>
+                            <p className="text-gray-500">
+                              {selectedCircleData 
+                                ? `Share with ${selectedCircleData.name}...`
+                                : 'Share your spiritual insights with the Sacred Network...'
+                              }
+                            </p>
                           </div>
                         </DialogTrigger>
                         <DialogContent className="max-w-2xl">
                           <DialogHeader>
-                            <DialogTitle>Create New Post</DialogTitle>
+                            <DialogTitle>
+                              {selectedCircleData 
+                                ? `Create Post in ${selectedCircleData.name}`
+                                : 'Create New Post'
+                              }
+                            </DialogTitle>
                           </DialogHeader>
                           <div className="space-y-4">
                             <Textarea
@@ -393,6 +539,14 @@ export default function SacredNetworkPage() {
                             <p className="text-sm text-gray-500">@{post.author?.username}</p>
                             <p className="text-sm text-gray-500">•</p>
                             <p className="text-sm text-gray-500">{formatTimeAgo(post.created_at)}</p>
+                            {post.visibility !== 'public' && (
+                              <>
+                                <p className="text-sm text-gray-500">•</p>
+                                <Badge variant="outline" className="text-xs capitalize">
+                                  {post.visibility}
+                                </Badge>
+                              </>
+                            )}
                           </div>
                           <Button variant="ghost" size="sm">
                             <MoreHorizontal className="w-4 h-4" />
@@ -428,7 +582,12 @@ export default function SacredNetworkPage() {
               {(!posts?.posts || posts.posts.length === 0) && (
                 <Card>
                   <CardContent className="text-center py-12">
-                    <p className="text-gray-500">No posts yet. Be the first to share something!</p>
+                    <p className="text-gray-500">
+                      {selectedCircleData 
+                        ? `No posts in ${selectedCircleData.name} yet. Be the first to share something!`
+                        : 'No posts yet. Be the first to share something!'
+                      }
+                    </p>
                   </CardContent>
                 </Card>
               )}
@@ -493,9 +652,10 @@ export default function SacredNetworkPage() {
                           size="sm"
                           variant="outline"
                           onClick={() => joinCircleMutation.mutate(circle.id)}
+                          disabled={joinCircleMutation.isPending}
                           className="ml-2"
                         >
-                          Join
+                          {joinCircleMutation.isPending ? 'Joining...' : 'Join'}
                         </Button>
                       </div>
                     </div>
@@ -512,9 +672,75 @@ export default function SacredNetworkPage() {
         </div>
       </div>
 
+      {/* Messages Dialog */}
+      <Dialog open={isMessagesOpen} onOpenChange={setIsMessagesOpen}>
+        <DialogContent className="max-w-2xl max-h-[80vh]">
+          <DialogHeader>
+            <DialogTitle>Messages</DialogTitle>
+          </DialogHeader>
+          <div className="space-y-4">
+            <div className="max-h-96 overflow-y-auto space-y-3">
+              {messages?.messages.map((message) => (
+                <div key={message.id} className="p-3 bg-gray-50 rounded-lg">
+                  <div className="flex items-center justify-between mb-2">
+                    <div className="flex items-center space-x-2">
+                      <Avatar className="w-6 h-6">
+                        <AvatarFallback className="text-xs">
+                          {message.sender?.display_name?.charAt(0) || 'U'}
+                        </AvatarFallback>
+                      </Avatar>
+                      <p className="font-medium text-sm">{message.sender?.display_name}</p>
+                    </div>
+                    <p className="text-xs text-gray-500">{formatTimeAgo(message.created_at)}</p>
+                  </div>
+                  <p className="text-sm text-gray-700">{message.content}</p>
+                </div>
+              ))}
+              {(!messages?.messages || messages.messages.length === 0) && (
+                <p className="text-center text-gray-500 py-8">No messages yet.</p>
+              )}
+            </div>
+            
+            <div className="border-t pt-4">
+              <div className="flex space-x-2">
+                <Select value={selectedConversation || ''} onValueChange={setSelectedConversation}>
+                  <SelectTrigger className="w-48">
+                    <SelectValue placeholder="Select recipient..." />
+                  </SelectTrigger>
+                  <SelectContent>
+                    <SelectItem value="user-2">Quantum Mystic</SelectItem>
+                    <SelectItem value="user-3">Dream Weaver</SelectItem>
+                    <SelectItem value="user-4">Light Worker</SelectItem>
+                    <SelectItem value="user-5">Frequency Healer</SelectItem>
+                  </SelectContent>
+                </Select>
+                <Input
+                  placeholder="Type your message..."
+                  value={newMessage}
+                  onChange={(e) => setNewMessage(e.target.value)}
+                  className="flex-1"
+                  onKeyPress={(e) => {
+                    if (e.key === 'Enter') {
+                      handleSendMessage();
+                    }
+                  }}
+                />
+                <Button
+                  onClick={handleSendMessage}
+                  disabled={sendMessageMutation.isPending || !newMessage.trim() || !selectedConversation}
+                >
+                  Send
+                </Button>
+              </div>
+            </div>
+          </div>
+        </DialogContent>
+      </Dialog>
+
       {/* Floating Messages Button */}
       <Button
         className="fixed bottom-4 right-4 z-50 rounded-full w-14 h-14 shadow-lg bg-purple-600 hover:bg-purple-700"
+        onClick={() => setIsMessagesOpen(true)}
       >
         <MessageCircle className="w-6 h-6" />
       </Button>
