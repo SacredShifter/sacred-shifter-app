@@ -12,6 +12,7 @@ import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@
 import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
 import backend from '~backend/client';
+import MessengerDrawer from '../components/messenger/MessengerDrawer';
 
 export default function SacredNetworkPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -22,9 +23,7 @@ export default function SacredNetworkPage() {
   const [newCircleDescription, setNewCircleDescription] = useState('');
   const [isCreateCircleOpen, setIsCreateCircleOpen] = useState(false);
   const [selectedCircle, setSelectedCircle] = useState<string | null>(null);
-  const [isMessagesOpen, setIsMessagesOpen] = useState(false);
-  const [newMessage, setNewMessage] = useState('');
-  const [selectedConversation, setSelectedConversation] = useState<string | null>(null);
+  const [isMessengerOpen, setIsMessengerOpen] = useState(false);
   const [expandedPost, setExpandedPost] = useState<string | null>(null);
   const [newComment, setNewComment] = useState('');
   const { toast } = useToast();
@@ -49,12 +48,6 @@ export default function SacredNetworkPage() {
   const { data: stats } = useQuery({
     queryKey: ['social-stats'],
     queryFn: () => backend.social.getStats(),
-  });
-
-  const { data: messages } = useQuery({
-    queryKey: ['social-messages'],
-    queryFn: () => backend.social.listMessages(),
-    enabled: isMessagesOpen,
   });
 
   // Mutations
@@ -161,27 +154,6 @@ export default function SacredNetworkPage() {
     },
   });
 
-  const sendMessageMutation = useMutation({
-    mutationFn: (data: { recipient_id: string; content: string }) =>
-      backend.social.sendMessage(data),
-    onSuccess: () => {
-      queryClient.invalidateQueries({ queryKey: ['social-messages'] });
-      setNewMessage('');
-      toast({
-        title: "📨 Message Transmitted",
-        description: "Your sacred message has been delivered.",
-      });
-    },
-    onError: (error) => {
-      console.error('Failed to send message:', error);
-      toast({
-        title: "⚠️ Transmission Failed",
-        description: "Unable to send your message. Please try again.",
-        variant: "destructive",
-      });
-    },
-  });
-
   const createCommentMutation = useMutation({
     mutationFn: (data: { post_id: string; content: string }) =>
       backend.social.createComment(data),
@@ -237,22 +209,6 @@ export default function SacredNetworkPage() {
     });
   };
 
-  const handleSendMessage = () => {
-    if (!newMessage.trim() || !selectedConversation) {
-      toast({
-        title: "⚠️ Incomplete Message",
-        description: "Please write a message and select a recipient.",
-        variant: "destructive",
-      });
-      return;
-    }
-
-    sendMessageMutation.mutate({
-      recipient_id: selectedConversation,
-      content: newMessage,
-    });
-  };
-
   const handleCreateComment = (postId: string) => {
     if (!newComment.trim()) {
       toast({
@@ -285,7 +241,7 @@ export default function SacredNetworkPage() {
     return (
       <div className="min-h-screen bg-gradient-to-br from-indigo-900 via-purple-900 to-pink-900 flex items-center justify-center">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-300 mx-auto mb-4"></div>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-purple-300 mx-auto mb-4" />
           <p className="text-purple-200">Connecting to the Sacred Network...</p>
         </div>
       </div>
@@ -810,85 +766,18 @@ export default function SacredNetworkPage() {
         </div>
       </div>
 
-      {/* Messages Dialog */}
-      <Dialog open={isMessagesOpen} onOpenChange={setIsMessagesOpen}>
-        <DialogContent className="max-w-2xl max-h-[80vh] bg-gradient-to-br from-purple-900 to-indigo-900 border-purple-500/30">
-          <DialogHeader>
-            <DialogTitle className="text-purple-100 flex items-center">
-              <MessageCircle className="w-5 h-5 mr-2" />
-              Sacred Messages
-            </DialogTitle>
-          </DialogHeader>
-          <div className="space-y-4">
-            <div className="max-h-96 overflow-y-auto space-y-3">
-              {messages?.messages.map((message) => (
-                <div key={message.id} className="p-3 bg-purple-900/30 rounded-lg border border-purple-500/20">
-                  <div className="flex items-center justify-between mb-2">
-                    <div className="flex items-center space-x-2">
-                      <Avatar className="w-6 h-6 ring-1 ring-purple-400/50">
-                        <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
-                          {message.sender?.display_name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <p className="font-medium text-sm text-purple-100">{message.sender?.display_name}</p>
-                    </div>
-                    <p className="text-xs text-purple-400">{formatTimeAgo(message.created_at)}</p>
-                  </div>
-                  <p className="text-sm text-purple-200">{message.content}</p>
-                </div>
-              ))}
-              {(!messages?.messages || messages.messages.length === 0) && (
-                <div className="text-center py-8">
-                  <MessageCircle className="w-12 h-12 text-purple-400 mx-auto mb-4" />
-                  <p className="text-purple-400">No sacred messages yet.</p>
-                </div>
-              )}
-            </div>
-            
-            <div className="border-t border-purple-500/20 pt-4">
-              <div className="flex space-x-2">
-                <Select value={selectedConversation || ''} onValueChange={setSelectedConversation}>
-                  <SelectTrigger className="w-48 bg-black/30 border-purple-500/30 text-purple-100">
-                    <SelectValue placeholder="Select recipient..." />
-                  </SelectTrigger>
-                  <SelectContent className="bg-purple-900 border-purple-500/30">
-                    <SelectItem value="user-2" className="text-purple-100">Quantum Mystic</SelectItem>
-                    <SelectItem value="user-3" className="text-purple-100">Dream Weaver</SelectItem>
-                    <SelectItem value="user-4" className="text-purple-100">Light Worker</SelectItem>
-                    <SelectItem value="user-5" className="text-purple-100">Frequency Healer</SelectItem>
-                  </SelectContent>
-                </Select>
-                <Input
-                  placeholder="Type your sacred message..."
-                  value={newMessage}
-                  onChange={(e) => setNewMessage(e.target.value)}
-                  className="flex-1 bg-black/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400"
-                  onKeyPress={(e) => {
-                    if (e.key === 'Enter') {
-                      handleSendMessage();
-                    }
-                  }}
-                />
-                <Button
-                  onClick={handleSendMessage}
-                  disabled={sendMessageMutation.isPending || !newMessage.trim() || !selectedConversation}
-                  className="bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                >
-                  <Send className="w-4 h-4" />
-                </Button>
-              </div>
-            </div>
-          </div>
-        </DialogContent>
-      </Dialog>
-
       {/* Floating Messages Button */}
       <Button
         className="fixed bottom-6 right-6 z-50 rounded-full w-16 h-16 shadow-2xl bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700 border-2 border-purple-400/50"
-        onClick={() => setIsMessagesOpen(true)}
+        onClick={() => setIsMessengerOpen(true)}
       >
         <MessageCircle className="w-6 h-6" />
       </Button>
+
+      <MessengerDrawer
+        isOpen={isMessengerOpen}
+        onClose={() => setIsMessengerOpen(false)}
+      />
     </div>
   );
 }
