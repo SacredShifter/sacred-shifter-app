@@ -1,38 +1,4 @@
 // Production configuration management
-import { secret } from "encore.dev/config";
-
-// Database configuration secrets
-export const dbConfig = {
-  maxConnections: secret("DB_MAX_CONNECTIONS"),
-  connectionTimeout: secret("DB_CONNECTION_TIMEOUT"),
-  queryTimeout: secret("DB_QUERY_TIMEOUT"),
-  sslMode: secret("DB_SSL_MODE"),
-};
-
-// API configuration secrets
-export const apiConfig = {
-  corsOrigins: secret("CORS_ALLOWED_ORIGINS"),
-  rateLimitWindow: secret("RATE_LIMIT_WINDOW_MS"),
-  rateLimitMax: secret("RATE_LIMIT_MAX_REQUESTS"),
-  jwtSecret: secret("JWT_SECRET"),
-};
-
-// AI configuration secrets
-export const aiConfig = {
-  openRouterKey: secret("OPENROUTER_API_KEY"),
-  maxTokens: secret("AI_MAX_TOKENS"),
-  timeout: secret("AI_TIMEOUT_MS"),
-  cacheEnabled: secret("AI_CACHE_ENABLED"),
-  cacheTTL: secret("AI_CACHE_TTL_SECONDS"),
-};
-
-// Monitoring configuration
-export const monitoringConfig = {
-  sentryDsn: secret("SENTRY_DSN"),
-  logLevel: secret("LOG_LEVEL"),
-  metricsEnabled: secret("METRICS_ENABLED"),
-  errorTrackingEnabled: secret("ERROR_TRACKING_ENABLED"),
-};
 
 // Environment detection
 export const environment = {
