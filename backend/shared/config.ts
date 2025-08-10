@@ -42,6 +42,13 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
     database_name: 'sacred_codex',
     features: ['entries', 'analytics', 'sharing', 'resonance', 'ai_insights'],
     dependencies: ['ai']
+  },
+  social: {
+    name: 'social',
+    version: '1.0.0',
+    database_name: 'sacred_social',
+    features: ['posts', 'comments', 'circles', 'messages', 'profiles'],
+    dependencies: ['ai']
   }
 };
 

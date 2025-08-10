@@ -1,48 +1,164 @@
 import { useState } from 'react';
-import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft } from 'lucide-react';
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query';
+import { Users, MessageCircle, Bell, Search, Menu, ArrowLeft, Plus, Heart, Share, MoreHorizontal } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import { Input } from '@/components/ui/input';
+import { Textarea } from '@/components/ui/textarea';
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar';
 import { Card, CardContent, CardHeader, CardTitle } from '@/components/ui/card';
 import { Badge } from '@/components/ui/badge';
+import { Dialog, DialogContent, DialogHeader, DialogTitle, DialogTrigger } from '@/components/ui/dialog';
+import { Select, SelectContent, SelectItem, SelectTrigger, SelectValue } from '@/components/ui/select';
+import { useToast } from '@/components/ui/use-toast';
 import { Link } from 'react-router-dom';
+import backend from '~backend/client';
 
 export default function SacredNetworkPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
+  const [newPostContent, setNewPostContent] = useState('');
+  const [newPostVisibility, setNewPostVisibility] = useState<'public' | 'followers' | 'private'>('public');
+  const [isCreatePostOpen, setIsCreatePostOpen] = useState(false);
+  const [newCircleName, setNewCircleName] = useState('');
+  const [newCircleDescription, setNewCircleDescription] = useState('');
+  const [isCreateCircleOpen, setIsCreateCircleOpen] = useState(false);
+  const { toast } = useToast();
+  const queryClient = useQueryClient();
 
-  const mockPosts = [
-    {
-      id: 1,
-      author: 'Sacred Seeker',
-      content: 'Just had an incredible meditation session with the new quantum frequencies. The resonance was off the charts! 🌟',
-      timestamp: '2 hours ago',
-      likes: 12,
-      comments: 3
+  // Fetch data
+  const { data: posts, isLoading: postsLoading } = useQuery({
+    queryKey: ['social-posts'],
+    queryFn: () => backend.social.listPosts(),
+  });
+
+  const { data: circles } = useQuery({
+    queryKey: ['social-circles'],
+    queryFn: () => backend.social.listCircles(),
+  });
+
+  const { data: profile } = useQuery({
+    queryKey: ['social-profile'],
+    queryFn: () => backend.social.getProfile(),
+  });
+
+  const { data: stats } = useQuery({
+    queryKey: ['social-stats'],
+    queryFn: () => backend.social.getStats(),
+  });
+
+  // Mutations
+  const createPostMutation = useMutation({
+    mutationFn: (data: { content: string; visibility: 'public' | 'followers' | 'private' }) =>
+      backend.social.createPost(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+      setNewPostContent('');
+      setIsCreatePostOpen(false);
+      toast({
+        title: "Success",
+        description: "Your post has been shared!",
+      });
     },
-    {
-      id: 2,
-      author: 'Consciousness Explorer',
-      content: 'Synchronicity alert: Saw 11:11, 2:22, and 3:33 all in the same day. The universe is definitely speaking! What patterns are you noticing?',
-      timestamp: '4 hours ago',
-      likes: 8,
-      comments: 7
+    onError: (error) => {
+      console.error('Failed to create post:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create post. Please try again.",
+        variant: "destructive",
+      });
     },
-    {
-      id: 3,
-      author: 'Dream Walker',
-      content: 'Last night\'s lucid dream was incredible. I was able to maintain awareness for over 20 minutes and explore the astral realm. Anyone else working on dream consciousness?',
-      timestamp: '6 hours ago',
-      likes: 15,
-      comments: 5
+  });
+
+  const toggleLikeMutation = useMutation({
+    mutationFn: (postId: string) => backend.social.toggleLike({ post_id: postId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-posts'] });
+    },
+  });
+
+  const createCircleMutation = useMutation({
+    mutationFn: (data: { name: string; description?: string; is_public?: boolean }) =>
+      backend.social.createCircle(data),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-circles'] });
+      setNewCircleName('');
+      setNewCircleDescription('');
+      setIsCreateCircleOpen(false);
+      toast({
+        title: "Success",
+        description: "Your circle has been created!",
+      });
+    },
+    onError: (error) => {
+      console.error('Failed to create circle:', error);
+      toast({
+        title: "Error",
+        description: "Failed to create circle. Please try again.",
+        variant: "destructive",
+      });
+    },
+  });
+
+  const joinCircleMutation = useMutation({
+    mutationFn: (circleId: string) => backend.social.joinCircle({ circle_id: circleId }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['social-circles'] });
+      toast({
+        title: "Success",
+        description: "You've joined the circle!",
+      });
+    },
+  });
+
+  const handleCreatePost = () => {
+    if (!newPostContent.trim()) {
+      toast({
+        title: "Error",
+        description: "Please write something before posting.",
+        variant: "destructive",
+      });
+      return;
     }
-  ];
 
-  const mockCircles = [
-    { name: 'Quantum Consciousness', members: 24, active: true },
-    { name: 'Dream Explorers', members: 18, active: false },
-    { name: 'Sacred Geometry', members: 31, active: true },
-    { name: 'Frequency Healers', members: 42, active: false }
-  ];
+    createPostMutation.mutate({
+      content: newPostContent,
+      visibility: newPostVisibility,
+    });
+  };
+
+  const handleCreateCircle = () => {
+    if (!newCircleName.trim()) {
+      toast({
+        title: "Error",
+        description: "Please enter a circle name.",
+        variant: "destructive",
+      });
+      return;
+    }
+
+    createCircleMutation.mutate({
+      name: newCircleName,
+      description: newCircleDescription || undefined,
+      is_public: true,
+    });
+  };
+
+  const formatTimeAgo = (dateString: string) => {
+    const date = new Date(dateString);
+    const now = new Date();
+    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
+    
+    if (diffInHours < 1) return 'Just now';
+    if (diffInHours < 24) return `${diffInHours}h ago`;
+    return `${Math.floor(diffInHours / 24)}d ago`;
+  };
+
+  if (postsLoading) {
+    return (
+      <div className="min-h-screen bg-gray-50 flex items-center justify-center">
+        <div className="animate-spin rounded-full h-8 w-8 border-b-2 border-purple-600"></div>
+      </div>
+    );
+  }
 
   return (
     <div className="min-h-screen bg-gray-50">
@@ -96,7 +212,8 @@ export default function SacredNetworkPage() {
               </Button>
               
               <Avatar className="w-8 h-8">
-                <AvatarFallback>SS</AvatarFallback>
+                <AvatarImage src={profile?.avatar_url} />
+                <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
               </Avatar>
             </div>
           </div>
@@ -113,25 +230,26 @@ export default function SacredNetworkPage() {
                 <CardContent className="p-4">
                   <div className="flex items-center space-x-3">
                     <Avatar className="w-12 h-12">
-                      <AvatarFallback>SS</AvatarFallback>
+                      <AvatarImage src={profile?.avatar_url} />
+                      <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
                     </Avatar>
                     <div>
-                      <p className="font-medium text-gray-900">Sacred Seeker</p>
-                      <p className="text-sm text-gray-500">Consciousness Explorer</p>
+                      <p className="font-medium text-gray-900">{profile?.display_name || 'Sacred Seeker'}</p>
+                      <p className="text-sm text-gray-500">@{profile?.username || 'sacred_seeker'}</p>
                     </div>
                   </div>
                   <div className="mt-4 grid grid-cols-3 gap-2 text-center">
                     <div>
-                      <p className="text-lg font-bold text-purple-600">42</p>
+                      <p className="text-lg font-bold text-purple-600">{profile?.post_count || 0}</p>
                       <p className="text-xs text-gray-500">Posts</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600">128</p>
-                      <p className="text-xs text-gray-500">Connections</p>
+                      <p className="text-lg font-bold text-purple-600">{profile?.following_count || 0}</p>
+                      <p className="text-xs text-gray-500">Following</p>
                     </div>
                     <div>
-                      <p className="text-lg font-bold text-purple-600">7</p>
-                      <p className="text-xs text-gray-500">Circles</p>
+                      <p className="text-lg font-bold text-purple-600">{profile?.follower_count || 0}</p>
+                      <p className="text-xs text-gray-500">Followers</p>
                     </div>
                   </div>
                 </CardContent>
@@ -140,24 +258,63 @@ export default function SacredNetworkPage() {
               {/* My Circles */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">My Circles</CardTitle>
+                  <div className="flex items-center justify-between">
+                    <CardTitle className="text-lg">My Circles</CardTitle>
+                    <Dialog open={isCreateCircleOpen} onOpenChange={setIsCreateCircleOpen}>
+                      <DialogTrigger asChild>
+                        <Button variant="ghost" size="sm">
+                          <Plus className="w-4 h-4" />
+                        </Button>
+                      </DialogTrigger>
+                      <DialogContent>
+                        <DialogHeader>
+                          <DialogTitle>Create New Circle</DialogTitle>
+                        </DialogHeader>
+                        <div className="space-y-4">
+                          <Input
+                            placeholder="Circle name..."
+                            value={newCircleName}
+                            onChange={(e) => setNewCircleName(e.target.value)}
+                          />
+                          <Textarea
+                            placeholder="Circle description (optional)..."
+                            value={newCircleDescription}
+                            onChange={(e) => setNewCircleDescription(e.target.value)}
+                            rows={3}
+                          />
+                          <Button
+                            onClick={handleCreateCircle}
+                            disabled={createCircleMutation.isPending}
+                            className="w-full"
+                          >
+                            {createCircleMutation.isPending ? 'Creating...' : 'Create Circle'}
+                          </Button>
+                        </div>
+                      </DialogContent>
+                    </Dialog>
+                  </div>
                 </CardHeader>
                 <CardContent className="space-y-2">
-                  {mockCircles.map((circle, index) => (
+                  {circles?.circles.filter(circle => circle.is_member).map((circle) => (
                     <div
-                      key={index}
+                      key={circle.id}
                       className="flex items-center justify-between p-2 rounded-lg hover:bg-gray-50 cursor-pointer"
                     >
                       <div className="flex items-center space-x-2">
-                        <div className={`w-3 h-3 rounded-full ${circle.active ? 'bg-green-500' : 'bg-gray-300'}`} />
+                        <div className="w-3 h-3 rounded-full bg-green-500" />
                         <span className="font-medium text-sm">{circle.name}</span>
                       </div>
                       <Badge variant="outline" className="text-xs">
                         <Users className="w-3 h-3 mr-1" />
-                        {circle.members}
+                        {circle.member_count}
                       </Badge>
                     </div>
                   ))}
+                  {!circles?.circles.some(circle => circle.is_member) && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      No circles joined yet.
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
@@ -171,59 +328,94 @@ export default function SacredNetworkPage() {
                 <CardContent className="p-4">
                   <div className="flex space-x-3">
                     <Avatar className="w-10 h-10">
-                      <AvatarFallback>SS</AvatarFallback>
+                      <AvatarImage src={profile?.avatar_url} />
+                      <AvatarFallback>{profile?.display_name?.charAt(0) || 'SS'}</AvatarFallback>
                     </Avatar>
                     <div className="flex-1">
-                      <div className="bg-gray-100 rounded-lg p-3 cursor-pointer hover:bg-gray-200 transition-colors">
-                        <p className="text-gray-500">Share your spiritual insights with the Sacred Network...</p>
-                      </div>
-                      <div className="flex items-center justify-between mt-3">
-                        <div className="flex space-x-2">
-                          <Button variant="ghost" size="sm" className="text-purple-600">
-                            📸 Photo
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-purple-600">
-                            🎵 Audio
-                          </Button>
-                          <Button variant="ghost" size="sm" className="text-purple-600">
-                            🔮 Vision
-                          </Button>
-                        </div>
-                        <Button className="bg-purple-600 hover:bg-purple-700">
-                          Share
-                        </Button>
-                      </div>
+                      <Dialog open={isCreatePostOpen} onOpenChange={setIsCreatePostOpen}>
+                        <DialogTrigger asChild>
+                          <div className="bg-gray-100 rounded-lg p-3 cursor-pointer hover:bg-gray-200 transition-colors">
+                            <p className="text-gray-500">Share your spiritual insights with the Sacred Network...</p>
+                          </div>
+                        </DialogTrigger>
+                        <DialogContent className="max-w-2xl">
+                          <DialogHeader>
+                            <DialogTitle>Create New Post</DialogTitle>
+                          </DialogHeader>
+                          <div className="space-y-4">
+                            <Textarea
+                              placeholder="What's on your mind?"
+                              value={newPostContent}
+                              onChange={(e) => setNewPostContent(e.target.value)}
+                              rows={6}
+                              className="resize-none"
+                            />
+                            <div className="flex items-center justify-between">
+                              <Select value={newPostVisibility} onValueChange={(value: 'public' | 'followers' | 'private') => setNewPostVisibility(value)}>
+                                <SelectTrigger className="w-40">
+                                  <SelectValue />
+                                </SelectTrigger>
+                                <SelectContent>
+                                  <SelectItem value="public">Public</SelectItem>
+                                  <SelectItem value="followers">Followers</SelectItem>
+                                  <SelectItem value="private">Private</SelectItem>
+                                </SelectContent>
+                              </Select>
+                              <Button
+                                onClick={handleCreatePost}
+                                disabled={createPostMutation.isPending}
+                                className="bg-purple-600 hover:bg-purple-700"
+                              >
+                                {createPostMutation.isPending ? 'Posting...' : 'Share'}
+                              </Button>
+                            </div>
+                          </div>
+                        </DialogContent>
+                      </Dialog>
                     </div>
                   </div>
                 </CardContent>
               </Card>
 
               {/* Feed Posts */}
-              {mockPosts.map((post) => (
+              {posts?.posts.map((post) => (
                 <Card key={post.id} className="hover:shadow-md transition-shadow">
                   <CardContent className="p-4">
                     <div className="flex space-x-3">
                       <Avatar className="w-10 h-10">
-                        <AvatarFallback>{post.author.split(' ').map(n => n[0]).join('')}</AvatarFallback>
+                        <AvatarImage src={post.author?.avatar_url} />
+                        <AvatarFallback>{post.author?.display_name?.charAt(0) || 'U'}</AvatarFallback>
                       </Avatar>
                       <div className="flex-1">
-                        <div className="flex items-center space-x-2 mb-2">
-                          <p className="font-medium text-gray-900">{post.author}</p>
-                          <p className="text-sm text-gray-500">{post.timestamp}</p>
+                        <div className="flex items-center justify-between mb-2">
+                          <div className="flex items-center space-x-2">
+                            <p className="font-medium text-gray-900">{post.author?.display_name}</p>
+                            <p className="text-sm text-gray-500">@{post.author?.username}</p>
+                            <p className="text-sm text-gray-500">•</p>
+                            <p className="text-sm text-gray-500">{formatTimeAgo(post.created_at)}</p>
+                          </div>
+                          <Button variant="ghost" size="sm">
+                            <MoreHorizontal className="w-4 h-4" />
+                          </Button>
                         </div>
-                        <p className="text-gray-800 leading-relaxed mb-4">{post.content}</p>
+                        <p className="text-gray-800 leading-relaxed mb-4 whitespace-pre-wrap">{post.content}</p>
                         
                         <div className="flex items-center space-x-6 text-gray-500">
-                          <button className="flex items-center space-x-1 hover:text-red-500 transition-colors">
-                            <span>❤️</span>
-                            <span className="text-sm">{post.likes}</span>
+                          <button 
+                            className={`flex items-center space-x-1 hover:text-red-500 transition-colors ${
+                              post.is_liked ? 'text-red-500' : ''
+                            }`}
+                            onClick={() => toggleLikeMutation.mutate(post.id)}
+                          >
+                            <Heart className={`w-4 h-4 ${post.is_liked ? 'fill-current' : ''}`} />
+                            <span className="text-sm">{post.like_count}</span>
                           </button>
                           <button className="flex items-center space-x-1 hover:text-blue-500 transition-colors">
                             <MessageCircle className="w-4 h-4" />
-                            <span className="text-sm">{post.comments}</span>
+                            <span className="text-sm">{post.comment_count}</span>
                           </button>
                           <button className="flex items-center space-x-1 hover:text-green-500 transition-colors">
-                            <span>🔄</span>
+                            <Share className="w-4 h-4" />
                             <span className="text-sm">Share</span>
                           </button>
                         </div>
@@ -232,72 +424,87 @@ export default function SacredNetworkPage() {
                   </CardContent>
                 </Card>
               ))}
+
+              {(!posts?.posts || posts.posts.length === 0) && (
+                <Card>
+                  <CardContent className="text-center py-12">
+                    <p className="text-gray-500">No posts yet. Be the first to share something!</p>
+                  </CardContent>
+                </Card>
+              )}
             </div>
           </div>
 
           {/* Right Sidebar */}
           <div className="lg:col-span-1 hidden lg:block">
             <div className="sticky top-24 space-y-6">
-              {/* Online Members */}
+              {/* Network Stats */}
               <Card>
                 <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Online Now</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {[1, 2, 3, 4, 5].map((i) => (
-                    <div key={i} className="flex items-center space-x-2 p-2 rounded-lg hover:bg-gray-50 cursor-pointer">
-                      <div className="relative">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>U{i}</AvatarFallback>
-                        </Avatar>
-                        <div className="absolute -bottom-0.5 -right-0.5 w-3 h-3 bg-green-500 border-2 border-white rounded-full"></div>
-                      </div>
-                      <span className="text-sm text-gray-700">Seeker {i}</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Trending Topics */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Trending</CardTitle>
-                </CardHeader>
-                <CardContent className="space-y-2">
-                  {[
-                    { tag: '#consciousness', posts: 42 },
-                    { tag: '#meditation', posts: 38 },
-                    { tag: '#synchronicity', posts: 29 },
-                    { tag: '#awakening', posts: 24 },
-                    { tag: '#quantumfield', posts: 18 }
-                  ].map((item) => (
-                    <div key={item.tag} className="flex items-center justify-between p-2 rounded-lg hover:bg-purple-50 cursor-pointer">
-                      <span className="text-sm text-purple-600 font-medium">{item.tag}</span>
-                      <span className="text-xs text-gray-500">{item.posts} posts</span>
-                    </div>
-                  ))}
-                </CardContent>
-              </Card>
-
-              {/* Suggested Connections */}
-              <Card>
-                <CardHeader className="pb-3">
-                  <CardTitle className="text-lg">Suggested Connections</CardTitle>
+                  <CardTitle className="text-lg">Network Stats</CardTitle>
                 </CardHeader>
                 <CardContent className="space-y-3">
-                  {['Quantum Mystic', 'Dream Weaver', 'Light Worker'].map((name, i) => (
-                    <div key={i} className="flex items-center justify-between">
-                      <div className="flex items-center space-x-2">
-                        <Avatar className="w-8 h-8">
-                          <AvatarFallback>{name.split(' ').map(n => n[0]).join('')}</AvatarFallback>
-                        </Avatar>
-                        <span className="text-sm font-medium">{name}</span>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Total Posts</span>
+                    <span className="font-medium">{stats?.total_posts || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Active Users</span>
+                    <span className="font-medium">{stats?.total_users || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Sacred Circles</span>
+                    <span className="font-medium">{stats?.total_circles || 0}</span>
+                  </div>
+                  <div className="flex justify-between">
+                    <span className="text-sm text-gray-600">Posts Today</span>
+                    <span className="font-medium">{stats?.posts_today || 0}</span>
+                  </div>
+                </CardContent>
+              </Card>
+
+              {/* Discover Circles */}
+              <Card>
+                <CardHeader className="pb-3">
+                  <CardTitle className="text-lg">Discover Circles</CardTitle>
+                </CardHeader>
+                <CardContent className="space-y-3">
+                  {circles?.circles.filter(circle => !circle.is_member).slice(0, 5).map((circle) => (
+                    <div key={circle.id} className="space-y-2">
+                      <div className="flex items-start justify-between">
+                        <div className="flex-1">
+                          <h4 className="font-medium text-sm">{circle.name}</h4>
+                          {circle.description && (
+                            <p className="text-xs text-gray-600 line-clamp-2">
+                              {circle.description}
+                            </p>
+                          )}
+                          <div className="flex items-center space-x-2 mt-1">
+                            <Badge variant="outline" className="text-xs">
+                              <Users className="w-3 h-3 mr-1" />
+                              {circle.member_count}
+                            </Badge>
+                            <Badge variant="outline" className="text-xs text-green-600">
+                              Public
+                            </Badge>
+                          </div>
+                        </div>
+                        <Button
+                          size="sm"
+                          variant="outline"
+                          onClick={() => joinCircleMutation.mutate(circle.id)}
+                          className="ml-2"
+                        >
+                          Join
+                        </Button>
                       </div>
-                      <Button size="sm" variant="outline" className="text-xs">
-                        Connect
-                      </Button>
                     </div>
                   ))}
+                  {!circles?.circles.some(circle => !circle.is_member) && (
+                    <p className="text-sm text-gray-500 text-center py-4">
+                      All circles joined!
+                    </p>
+                  )}
                 </CardContent>
               </Card>
             </div>
