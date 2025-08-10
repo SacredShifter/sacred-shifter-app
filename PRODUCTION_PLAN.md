@@ -173,17 +173,17 @@ This document outlines the complete implementation plan to get Sacred Shifter fr
 ### 4.2 CI/CD Pipeline
 
 #### Automated Deployment
-- [ ] Set up GitHub Actions workflows
-- [ ] Implement automated testing in CI
+- [x] Set up GitHub Actions workflows
+- [x] Implement automated testing in CI
 - [ ] Create staging environment
-- [ ] Set up automated deployments
-- [ ] Implement rollback procedures
+- [x] Set up automated deployments
+- [x] Implement rollback procedures
 
 #### Quality Gates
-- [ ] Code quality checks
-- [ ] Security scanning
+- [x] Code quality checks
+- [x] Security scanning
 - [ ] Performance regression testing
-- [ ] Automated dependency updates
+- [x] Automated dependency updates
 - [ ] Documentation generation
 
 ## Phase 5: Launch Preparation (Week 7)
@@ -345,45 +345,61 @@ on:
 
 jobs:
   test:
-    runs-on: ubuntu-latest
-    steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run test
-      - run: npm run lint
-      - run: npm run type-check
+    # ... (runs linting, type-checking, unit tests)
+  
+  security:
+    # ... (runs trivy and npm audit)
 
   deploy-backend:
-    needs: test
+    needs: [test, security]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
+      # ... (checkout, setup, install encore)
       - name: Deploy to Encore Cloud
+        run: encore app deploy --env=prod
+        env:
+          ENCORE_AUTH_TOKEN: ${{ secrets.ENCORE_AUTH_TOKEN }}
+      - name: Wait for backend deployment to be healthy
         run: |
-          encore app deploy --env=prod
+          for i in {1..30}; do
+            if curl -sf "${{ secrets.BACKEND_URL }}/system/health"; then
+              echo "Backend is healthy."
+              exit 0
+            fi
+            sleep 10
+          done
+          exit 1
+
+  deploy-frontend:
+    # ... (builds and deploys frontend to Vercel)
+
+  migrate-database:
+    needs: [deploy-backend]
+    runs-on: ubuntu-latest
+    steps:
+      # ... (checkout, setup, install encore)
+      - name: Run database migrations
+        run: encore db migrate --env=prod
+        env:
+          ENCORE_AUTH_TOKEN: ${{ secrets.ENCORE_AUTH_TOKEN }}
+      - name: Apply production indexes
+        run: encore run --env=prod backend/scripts/apply-prod-indexes.ts
         env:
           ENCORE_AUTH_TOKEN: ${{ secrets.ENCORE_AUTH_TOKEN }}
 
-  deploy-frontend:
-    needs: test
+  verify-deployment:
+    # ... (runs health checks and integration tests)
+
+  rollback:
+    if: failure()
+    needs: [verify-deployment]
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v3
-      - uses: actions/setup-node@v3
-        with:
-          node-version: '18'
-      - run: npm ci
-      - run: npm run build
-      - name: Deploy to Vercel
-        uses: amondnet/vercel-action@v20
-        with:
-          vercel-token: ${{ secrets.VERCEL_TOKEN }}
-          vercel-org-id: ${{ secrets.ORG_ID }}
-          vercel-project-id: ${{ secrets.PROJECT_ID }}
-          vercel-args: '--prod'
+      # ... (checkout, setup, install encore)
+      - name: Rollback backend deployment
+        run: encore app rollback --env=prod
+        env:
+          ENCORE_AUTH_TOKEN: ${{ secrets.ENCORE_AUTH_TOKEN }}
 ```
 
 ## Risk Mitigation

@@ -100,7 +100,7 @@ export class DatabaseManager {
     `;
 
     try {
-      await db.exec`${query}`;
+      await db.rawExec(query);
     } catch (error) {
       logError(error as Error, { indexName, tableName, columns });
       throw error;
@@ -114,7 +114,7 @@ export class DatabaseManager {
   ): Promise<any> {
     try {
       const explainQuery = `EXPLAIN (ANALYZE, BUFFERS, FORMAT JSON) ${query}`;
-      const result = await db.queryRow`${explainQuery}`;
+      const result = await db.rawQueryRow(explainQuery);
       return result;
     } catch (error) {
       logError(error as Error, { query: "query_analysis" });
@@ -276,32 +276,3 @@ export const ProductionIndexes = {
     },
   ],
 };
-
-// Database migration utilities
-export async function applyProductionIndexes(
-  databases: Record<string, SQLDatabase>
-): Promise<void> {
-  const dbManager = DatabaseManager.getInstance();
-
-  for (const [moduleName, indexes] of Object.entries(ProductionIndexes)) {
-    const db = databases[moduleName];
-    if (!db) continue;
-
-    console.log(`Applying production indexes for ${moduleName}...`);
-    
-    for (const index of indexes) {
-      try {
-        await dbManager.createIndexIfNotExists(
-          db,
-          index.name,
-          index.table,
-          index.columns,
-          index.options
-        );
-        console.log(`✓ Created index ${index.name}`);
-      } catch (error) {
-        console.error(`✗ Failed to create index ${index.name}:`, error);
-      }
-    }
-  }
-}
