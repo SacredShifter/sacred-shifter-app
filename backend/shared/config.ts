@@ -11,35 +11,35 @@ export const ModuleConfigs: Record<string, ModuleConfig> = {
   journal: {
     name: 'journal',
     version: '1.0.0',
-    database_name: 'journal_entries',
+    database_name: 'sacred_journal',
     features: ['entries', 'analytics', 'export'],
     dependencies: ['ai']
   },
   meditation: {
     name: 'meditation',
     version: '1.0.0',
-    database_name: 'meditation_sessions',
+    database_name: 'sacred_meditation',
     features: ['sessions', 'analytics', 'soundscapes'],
     dependencies: ['ai']
   },
   community: {
     name: 'community',
     version: '1.0.0',
-    database_name: 'community_data',
+    database_name: 'sacred_community',
     features: ['learnings', 'messages', 'circles'],
     dependencies: ['ai']
   },
   ai: {
     name: 'ai',
     version: '1.0.0',
-    database_name: 'ai_assistant',
+    database_name: 'sacred_ai',
     features: ['chat', 'preferences', 'conversations'],
     dependencies: []
   },
   codex: {
     name: 'codex',
     version: '1.0.0',
-    database_name: 'resonant_codex',
+    database_name: 'sacred_codex',
     features: ['entries', 'analytics', 'sharing', 'resonance', 'ai_insights'],
     dependencies: ['ai']
   }

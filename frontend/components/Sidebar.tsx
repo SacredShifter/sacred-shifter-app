@@ -1,5 +1,5 @@
 import { Link, useLocation } from 'react-router-dom';
-import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings } from 'lucide-react';
+import { Home, Rss, Users, BookOpen, Brain, Database, Play, Book, User, Heart, Settings, Network } from 'lucide-react';
 import { Button } from '@/components/ui/button';
 import ModuleHealthIndicator from './ModuleHealthIndicator';
 
@@ -7,6 +7,7 @@ const coreNavigation = [
   { name: 'Home', href: '/', icon: Home },
   { name: 'Feed', href: '/feed', icon: Rss, module: 'community' },
   { name: 'Messages', href: '/messages', icon: Users, module: 'community' },
+  { name: 'Sacred Network', href: '/network', icon: Network },
 ];
 
 const sacredTools = [

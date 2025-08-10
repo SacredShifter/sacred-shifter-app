@@ -16,7 +16,7 @@ export class MeditationService {
   private readonly MODULE_NAME = 'meditation';
 
   constructor() {
-    this.db = new SQLDatabase("meditation_sessions", {
+    this.db = new SQLDatabase("sacred_meditation", {
       migrations: "./migrations",
     });
   }

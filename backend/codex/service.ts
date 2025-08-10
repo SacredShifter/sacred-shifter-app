@@ -19,7 +19,7 @@ export class CodexService {
   private readonly MODULE_NAME = 'codex';
 
   constructor() {
-    this.db = new SQLDatabase("resonant_codex", {
+    this.db = new SQLDatabase("sacred_codex", {
       migrations: "./migrations",
     });
   }

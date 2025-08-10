@@ -10,6 +10,7 @@ import JournalPage from './pages/JournalPage';
 import CodexPage from './pages/CodexPage';
 import MeditationPage from './pages/MeditationPage';
 import CommunityPage from './pages/CommunityPage';
+import SacredNetworkPage from './pages/SacredNetworkPage';
 
 const queryClient = new QueryClient();
 
@@ -26,6 +27,7 @@ export default function App() {
             <Route path="/codex" element={<Layout><CodexPage /></Layout>} />
             <Route path="/meditation" element={<Layout><MeditationPage /></Layout>} />
             <Route path="/community" element={<Layout><CommunityPage /></Layout>} />
+            <Route path="/network" element={<SacredNetworkPage />} />
           </Routes>
           <Toaster />
         </MeditationProvider>
