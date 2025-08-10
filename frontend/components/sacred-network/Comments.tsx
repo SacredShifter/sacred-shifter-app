@@ -1,112 +1,53 @@
-import { useState, useEffect } from 'react'
+import { useState } from 'react'
 import { formatDistanceToNow } from 'date-fns'
 import { Send } from 'lucide-react'
 import { Button } from '@/components/ui/button'
 import { Textarea } from '@/components/ui/textarea'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import { useToast } from '@/components/ui/use-toast'
-import { supabase } from '../../lib/supabase'
-
-interface Comment {
-  id: string
-  body: string
-  created_at: string
-  author: {
-    id: string
-    email: string
-    user_metadata: {
-      full_name?: string
-      avatar_url?: string
-    }
-  }
-}
+import backend from '~backend/client'
+import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
 
 interface CommentsProps {
   postId: string
 }
 
 export default function Comments({ postId }: CommentsProps) {
-  const [comments, setComments] = useState<Comment[]>([])
   const [newComment, setNewComment] = useState('')
-  const [isSubmitting, setIsSubmitting] = useState(false)
-  const [loading, setLoading] = useState(true)
   const { toast } = useToast()
+  const queryClient = useQueryClient()
 
-  const fetchComments = async () => {
-    try {
-      const { data, error } = await supabase
-        .from('social_comments')
-        .select(`
-          *,
-          author:auth.users!social_comments_author_id_fkey(id, email, user_metadata)
-        `)
-        .eq('post_id', postId)
-        .order('created_at', { ascending: true })
+  const { data, isLoading: loading } = useQuery({
+    queryKey: ['comments', postId],
+    queryFn: () => backend.social.listComments({ postId }),
+  })
+  const comments = data?.comments || []
 
-      if (error) throw error
-
-      setComments(data as any || [])
-    } catch (err) {
-      console.error('Failed to fetch comments:', err)
-    } finally {
-      setLoading(false)
-    }
-  }
-
-  const handleSubmit = async () => {
-    if (!newComment.trim()) return
-
-    try {
-      setIsSubmitting(true)
-      
-      const { data: user } = await supabase.auth.getUser()
-      if (!user.user) throw new Error('Not authenticated')
-
-      const { error } = await supabase
-        .from('social_comments')
-        .insert({
-          post_id: postId,
-          author_id: user.user.id,
-          content: newComment.trim()
-        })
-
-      if (error) throw error
-
+  const createCommentMutation = useMutation({
+    mutationFn: (content: string) => backend.social.createComment({ postId, content }),
+    onSuccess: () => {
+      queryClient.invalidateQueries({ queryKey: ['comments', postId] })
+      queryClient.invalidateQueries({ queryKey: ['social-posts'] }) // to update comment_count
       setNewComment('')
-      fetchComments()
-    } catch (error) {
+    },
+    onError: (error) => {
       console.error('Failed to create comment:', error)
       toast({
         title: "Error",
         description: "Failed to post comment. Please try again.",
         variant: "destructive",
       })
-    } finally {
-      setIsSubmitting(false)
-    }
+    },
+  })
+
+  const handleSubmit = async () => {
+    if (!newComment.trim()) return
+    createCommentMutation.mutate(newComment.trim())
   }
 
-  useEffect(() => {
-    fetchComments()
-
-    // Set up real-time subscription
-    const subscription = supabase
-      .channel(`comments-${postId}`)
-      .on('postgres_changes', 
-        { 
-          event: 'INSERT', 
-          schema: 'public', 
-          table: 'social_comments',
-          filter: `post_id=eq.${postId}`
-        },
-        () => fetchComments()
-      )
-      .subscribe()
-
-    return () => {
-      subscription.unsubscribe()
-    }
-  }, [postId])
+  // Real-time subscription is removed as it was using supabase channels.
+  // This would require a websocket implementation on the backend, which is out of scope for now.
+  // The query will refetch on window focus, which is a decent substitute for now.
 
   if (loading) {
     return (
@@ -123,19 +64,19 @@ export default function Comments({ postId }: CommentsProps) {
     <div className="space-y-3 pt-3 border-t border-gray-100">
       {/* Existing comments */}
       {comments.map((comment) => {
-        const authorName = comment.author.user_metadata?.full_name || comment.author.email.split('@')[0]
+        const authorName = comment.author.display_name || comment.author.username
         const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase()
 
         return (
           <div key={comment.id} className="flex space-x-3">
             <Avatar className="w-8 h-8">
-              <AvatarImage src={comment.author.user_metadata?.avatar_url} />
+              <AvatarImage src={comment.author.avatar_url || undefined} />
               <AvatarFallback className="text-xs">{authorInitials}</AvatarFallback>
             </Avatar>
             <div className="flex-1">
               <div className="bg-gray-50 rounded-lg px-3 py-2">
                 <p className="font-medium text-sm text-gray-900">{authorName}</p>
-                <p className="text-sm text-gray-800">{comment.body}</p>
+                <p className="text-sm text-gray-800">{comment.content}</p>
               </div>
               <p className="text-xs text-gray-500 mt-1 ml-3">
                 {formatDistanceToNow(new Date(comment.created_at), { addSuffix: true })}
@@ -165,7 +106,7 @@ export default function Comments({ postId }: CommentsProps) {
           />
           <Button
             onClick={handleSubmit}
-            disabled={!newComment.trim() || isSubmitting}
+            disabled={!newComment.trim() || createCommentMutation.isPending}
             size="sm"
             className="self-end"
           >

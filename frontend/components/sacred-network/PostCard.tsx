@@ -6,39 +6,15 @@ import { Button } from '@/components/ui/button'
 import { Badge } from '@/components/ui/badge'
 import { Avatar, AvatarFallback, AvatarImage } from '@/components/ui/avatar'
 import Comments from './Comments'
+import type { SocialPost } from '~backend/social/types'
 
 interface PostCardProps {
-  post: {
-    id: string
-    author: {
-      id: string
-      email: string
-      user_metadata: {
-        full_name?: string
-        avatar_url?: string
-      }
-    }
-    circle?: {
-      id: string
-      name: string
-    }
-    body: string | null
-    visibility: string
-    media: any
-    created_at: string
-    reactions: Array<{
-      kind: string
-      count: number
-      user_reacted: boolean
-    }>
-    comment_count: number
-  }
+  post: SocialPost
   onReaction: (postId: string, kind: string) => void
 }
 
 export default function PostCard({ post, onReaction }: PostCardProps) {
   const [showComments, setShowComments] = useState(false)
-  const [showAISummary, setShowAISummary] = useState(false)
 
   const getReactionIcon = (kind: string) => {
     switch (kind) {
@@ -68,10 +44,6 @@ export default function PostCard({ post, onReaction }: PostCardProps) {
         return <Badge variant="outline" className="text-green-600 border-green-200">Public</Badge>
       case 'followers':
         return <Badge variant="outline" className="text-blue-600 border-blue-200">Followers</Badge>
-      case 'circle':
-        return <Badge variant="outline" className="text-purple-600 border-purple-200">
-          Circle: {post.circle?.name}
-        </Badge>
       case 'private':
         return <Badge variant="outline" className="text-gray-600 border-gray-200">Private</Badge>
       default:
@@ -79,7 +51,7 @@ export default function PostCard({ post, onReaction }: PostCardProps) {
     }
   }
 
-  const authorName = post.author.user_metadata?.full_name || post.author.email.split('@')[0]
+  const authorName = post.author.display_name || post.author.username
   const authorInitials = authorName.split(' ').map(n => n[0]).join('').toUpperCase()
 
   return (
@@ -88,7 +60,7 @@ export default function PostCard({ post, onReaction }: PostCardProps) {
         <div className="flex items-start justify-between">
           <div className="flex items-center space-x-3">
             <Avatar className="w-10 h-10">
-              <AvatarImage src={post.author.user_metadata?.avatar_url} />
+              <AvatarImage src={post.author.avatar_url || undefined} />
               <AvatarFallback>{authorInitials}</AvatarFallback>
             </Avatar>
             <div>
@@ -106,24 +78,22 @@ export default function PostCard({ post, onReaction }: PostCardProps) {
       </CardHeader>
 
       <CardContent className="space-y-4">
-        {post.body && (
+        {post.content && (
           <div className="prose max-w-none">
-            <p className="text-gray-800 whitespace-pre-wrap">{post.body}</p>
+            <p className="text-gray-800 whitespace-pre-wrap">{post.content}</p>
           </div>
         )}
 
         {/* Media gallery */}
-        {post.media && post.media.length > 0 && (
+        {post.media_urls && post.media_urls.length > 0 && (
           <div className="grid grid-cols-2 gap-2 rounded-lg overflow-hidden">
-            {post.media.map((item: any, index: number) => (
+            {post.media_urls.map((url, index) => (
               <div key={index} className="aspect-square bg-gray-100 rounded-lg">
-                {item.type === 'image' && (
-                  <img 
-                    src={item.url} 
-                    alt="" 
-                    className="w-full h-full object-cover"
-                  />
-                )}
+                <img 
+                  src={url} 
+                  alt="" 
+                  className="w-full h-full object-cover"
+                />
               </div>
             ))}
           </div>

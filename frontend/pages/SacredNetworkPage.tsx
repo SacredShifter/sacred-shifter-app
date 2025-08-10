@@ -14,6 +14,7 @@ import { useFeed } from '../hooks/useFeed';
 import { useCircles } from '../hooks/useCircles';
 import { defaultUser } from '../config';
 import MessengerDrawer from '../components/messenger/MessengerDrawer';
+import PostCard from '../components/sacred-network/PostCard';
 
 export default function SacredNetworkPage() {
   const [sidebarOpen, setSidebarOpen] = useState(false);
@@ -25,11 +26,8 @@ export default function SacredNetworkPage() {
   const [isCreateCircleOpen, setIsCreateCircleOpen] = useState(false);
   const [selectedCircle, setSelectedCircle] = useState<string | null>(null);
   const [isMessengerOpen, setIsMessengerOpen] = useState(false);
-  const [expandedPost, setExpandedPost] = useState<string | null>(null);
-  const [newComment, setNewComment] = useState('');
   const { toast } = useToast();
 
-  // Use the actual hooks that connect to Supabase
   const { posts, loading: postsLoading, createPost, toggleReaction } = useFeed(selectedCircle || undefined);
   const { circles, myCircles, createCircle, joinCircle, leaveCircle } = useCircles();
 
@@ -72,16 +70,6 @@ export default function SacredNetworkPage() {
     setNewCircleName('');
     setNewCircleDescription('');
     setIsCreateCircleOpen(false);
-  };
-
-  const formatTimeAgo = (dateString: string) => {
-    const date = new Date(dateString);
-    const now = new Date();
-    const diffInHours = Math.floor((now.getTime() - date.getTime()) / (1000 * 60 * 60));
-    
-    if (diffInHours < 1) return 'Just now';
-    if (diffInHours < 24) return `${diffInHours}h ago`;
-    return `${Math.floor(diffInHours / 24)}d ago`;
   };
 
   const selectedCircleData = circles.find(c => c.id === selectedCircle);
@@ -398,128 +386,7 @@ export default function SacredNetworkPage() {
 
               {/* Feed Posts */}
               {posts.map((post) => (
-                <Card key={post.id} className="bg-black/30 backdrop-blur-lg border-purple-500/30 hover:border-purple-400/50 transition-all">
-                  <CardContent className="p-6">
-                    <div className="flex space-x-4">
-                      <Avatar className="w-12 h-12 ring-2 ring-purple-400/50">
-                        <AvatarImage src={post.author?.user_metadata?.avatar_url} />
-                        <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white">
-                          {post.author?.user_metadata?.full_name?.charAt(0) || 'U'}
-                        </AvatarFallback>
-                      </Avatar>
-                      <div className="flex-1">
-                        <div className="flex items-center justify-between mb-3">
-                          <div className="flex items-center space-x-2">
-                            <p className="font-medium text-purple-100">
-                              {post.author?.user_metadata?.full_name || post.author?.email?.split('@')[0]}
-                            </p>
-                            <p className="text-sm text-purple-400">
-                              @{post.author?.email?.split('@')[0]}
-                            </p>
-                            <p className="text-sm text-purple-500">•</p>
-                            <p className="text-sm text-purple-400">{formatTimeAgo(post.created_at)}</p>
-                            {post.visibility !== 'public' && (
-                              <>
-                                <p className="text-sm text-purple-500">•</p>
-                                <Badge variant="outline" className="text-xs capitalize border-purple-400 text-purple-300">
-                                  {post.visibility === 'followers' ? 'Resonators' : post.visibility}
-                                </Badge>
-                              </>
-                            )}
-                          </div>
-                          <Button variant="ghost" size="sm" className="text-purple-400 hover:text-purple-200">
-                            <MoreHorizontal className="w-4 h-4" />
-                          </Button>
-                        </div>
-                        <p className="text-purple-100 leading-relaxed mb-4 whitespace-pre-wrap">{post.body}</p>
-                        
-                        <div className="flex items-center justify-between text-purple-400 border-t border-purple-500/20 pt-4">
-                          <div className="flex items-center space-x-6">
-                            {['like', 'insight', 'support', 'vigil'].map((reactionType) => {
-                              const reaction = post.reactions.find(r => r.kind === reactionType);
-                              const isReacted = reaction?.user_reacted || false;
-                              const count = reaction?.count || 0;
-                              
-                              return (
-                                <button 
-                                  key={reactionType}
-                                  className={`flex items-center space-x-2 hover:text-pink-400 transition-colors group ${
-                                    isReacted ? 'text-pink-400' : ''
-                                  }`}
-                                  onClick={() => toggleReaction(post.id, reactionType)}
-                                >
-                                  <Heart className={`w-5 h-5 group-hover:scale-110 transition-transform ${isReacted ? 'fill-current' : ''}`} />
-                                  <span className="text-sm font-medium">{count}</span>
-                                </button>
-                              );
-                            })}
-                            <button 
-                              className="flex items-center space-x-2 hover:text-blue-400 transition-colors group"
-                              onClick={() => setExpandedPost(expandedPost === post.id ? null : post.id)}
-                            >
-                              <MessageCircle className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                              <span className="text-sm font-medium">{post.comment_count}</span>
-                            </button>
-                            <button className="flex items-center space-x-2 hover:text-green-400 transition-colors group">
-                              <Share className="w-5 h-5 group-hover:scale-110 transition-transform" />
-                              <span className="text-sm font-medium">Share</span>
-                            </button>
-                          </div>
-                          <div className="flex items-center space-x-1 text-xs text-purple-500">
-                            <Zap className="w-3 h-3" />
-                            <span>Sacred Network</span>
-                          </div>
-                        </div>
-
-                        {/* Comments Section */}
-                        {expandedPost === post.id && (
-                          <div className="mt-6 space-y-4 border-t border-purple-500/20 pt-4">
-                            {/* Comment Input */}
-                            <div className="flex space-x-3">
-                              <Avatar className="w-8 h-8 ring-1 ring-purple-400/50">
-                                <AvatarImage src={defaultUser.avatar_url || undefined} />
-                                <AvatarFallback className="bg-gradient-to-r from-purple-500 to-indigo-500 text-white text-xs">
-                                  {defaultUser.display_name.charAt(0)}
-                                </AvatarFallback>
-                              </Avatar>
-                              <div className="flex-1 flex space-x-2">
-                                <Textarea
-                                  placeholder="Share your reflection..."
-                                  value={newComment}
-                                  onChange={(e) => setNewComment(e.target.value)}
-                                  className="min-h-[60px] bg-purple-900/30 border-purple-500/30 text-purple-100 placeholder:text-purple-400 text-sm resize-none"
-                                  onKeyDown={(e) => {
-                                    if (e.key === 'Enter' && !e.shiftKey) {
-                                      e.preventDefault();
-                                      // Handle comment creation here
-                                      setNewComment('');
-                                    }
-                                  }}
-                                />
-                                <Button
-                                  onClick={() => {
-                                    // Handle comment creation here
-                                    setNewComment('');
-                                  }}
-                                  disabled={!newComment.trim()}
-                                  size="sm"
-                                  className="self-end bg-gradient-to-r from-purple-600 to-indigo-600 hover:from-purple-700 hover:to-indigo-700"
-                                >
-                                  <Send className="w-4 h-4" />
-                                </Button>
-                              </div>
-                            </div>
-
-                            {/* Existing Comments Placeholder */}
-                            <div className="text-center py-4">
-                              <p className="text-purple-400 text-sm">Comments will appear here</p>
-                            </div>
-                          </div>
-                        )}
-                      </div>
-                    </div>
-                  </CardContent>
-                </Card>
+                <PostCard key={post.id} post={post} onReaction={toggleReaction} />
               ))}
 
               {posts.length === 0 && (

@@ -38,6 +38,7 @@ export class Client {
     public readonly community: community.ServiceClient
     public readonly journal: journal.ServiceClient
     public readonly meditation: meditation.ServiceClient
+    public readonly social: social.ServiceClient
     public readonly system: system.ServiceClient
     private readonly options: ClientOptions
     private readonly target: string
@@ -58,6 +59,7 @@ export class Client {
         this.community = new community.ServiceClient(base)
         this.journal = new journal.ServiceClient(base)
         this.meditation = new meditation.ServiceClient(base)
+        this.social = new social.ServiceClient(base)
         this.system = new system.ServiceClient(base)
     }
 
@@ -611,6 +613,135 @@ export namespace meditation {
             // Now make the actual call to the API
             const resp = await this.baseClient.callTypedAPI(`/meditation/sessions/start`, {method: "POST", body: JSON.stringify(params)})
             return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_meditation_sessions_startSession>
+        }
+    }
+}
+
+/**
+ * Import the endpoint handlers to derive the types for the client.
+ */
+import {
+    createCircle as api_social_circles_createCircle,
+    joinCircle as api_social_circles_joinCircle,
+    leaveCircle as api_social_circles_leaveCircle,
+    listCircles as api_social_circles_listCircles
+} from "~backend/social/circles";
+import {
+    createComment as api_social_comments_createComment,
+    listComments as api_social_comments_listComments
+} from "~backend/social/comments";
+import {
+    createPost as api_social_posts_createPost,
+    listPosts as api_social_posts_listPosts,
+    toggleReaction as api_social_posts_toggleReaction
+} from "~backend/social/posts";
+
+export namespace social {
+
+    export class ServiceClient {
+        private baseClient: BaseClient
+
+        constructor(baseClient: BaseClient) {
+            this.baseClient = baseClient
+            this.createCircle = this.createCircle.bind(this)
+            this.createComment = this.createComment.bind(this)
+            this.createPost = this.createPost.bind(this)
+            this.joinCircle = this.joinCircle.bind(this)
+            this.leaveCircle = this.leaveCircle.bind(this)
+            this.listCircles = this.listCircles.bind(this)
+            this.listComments = this.listComments.bind(this)
+            this.listPosts = this.listPosts.bind(this)
+            this.toggleReaction = this.toggleReaction.bind(this)
+        }
+
+        /**
+         * Creates a new circle.
+         */
+        public async createCircle(params: RequestType<typeof api_social_circles_createCircle>): Promise<ResponseType<typeof api_social_circles_createCircle>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/circles`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_circles_createCircle>
+        }
+
+        /**
+         * Creates a new comment.
+         */
+        public async createComment(params: RequestType<typeof api_social_comments_createComment>): Promise<ResponseType<typeof api_social_comments_createComment>> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                content: params.content,
+            }
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/comments`, {method: "POST", body: JSON.stringify(body)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_comments_createComment>
+        }
+
+        /**
+         * Creates a new post.
+         */
+        public async createPost(params: RequestType<typeof api_social_posts_createPost>): Promise<ResponseType<typeof api_social_posts_createPost>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts`, {method: "POST", body: JSON.stringify(params)})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_posts_createPost>
+        }
+
+        /**
+         * Joins a circle.
+         */
+        public async joinCircle(params: { circleId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/circles/${encodeURIComponent(params.circleId)}/join`, {method: "POST", body: undefined})
+        }
+
+        /**
+         * Leaves a circle.
+         */
+        public async leaveCircle(params: { circleId: string }): Promise<void> {
+            await this.baseClient.callTypedAPI(`/social/circles/${encodeURIComponent(params.circleId)}/leave`, {method: "POST", body: undefined})
+        }
+
+        /**
+         * Lists all circles.
+         */
+        public async listCircles(): Promise<ResponseType<typeof api_social_circles_listCircles>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/circles`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_circles_listCircles>
+        }
+
+        /**
+         * Lists comments for a post.
+         */
+        public async listComments(params: { postId: string }): Promise<ResponseType<typeof api_social_comments_listComments>> {
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/comments`, {method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_comments_listComments>
+        }
+
+        /**
+         * Lists posts for the feed.
+         */
+        public async listPosts(params: RequestType<typeof api_social_posts_listPosts>): Promise<ResponseType<typeof api_social_posts_listPosts>> {
+            // Convert our params into the objects we need for the request
+            const query = makeRecord<string, string | string[]>({
+                "circle_id": params["circle_id"],
+            })
+
+            // Now make the actual call to the API
+            const resp = await this.baseClient.callTypedAPI(`/social/posts`, {query, method: "GET", body: undefined})
+            return JSON.parse(await resp.text(), dateReviver) as ResponseType<typeof api_social_posts_listPosts>
+        }
+
+        /**
+         * Toggles a reaction on a post.
+         */
+        public async toggleReaction(params: RequestType<typeof api_social_posts_toggleReaction>): Promise<void> {
+            // Construct the body with only the fields which we want encoded within the body (excluding query string or header fields)
+            const body: Record<string, any> = {
+                kind: params.kind,
+            }
+
+            await this.baseClient.callTypedAPI(`/social/posts/${encodeURIComponent(params.postId)}/reactions`, {method: "POST", body: JSON.stringify(body)})
         }
     }
 }

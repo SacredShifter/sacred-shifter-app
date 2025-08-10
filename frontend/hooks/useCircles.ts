@@ -1,27 +1,7 @@
-import { useState, useEffect } from 'react'
 import { useQuery, useMutation, useQueryClient } from '@tanstack/react-query'
-import { supabase } from '../lib/supabase'
-import { defaultUser } from '../config'
+import backend from '~backend/client'
 import { useToast } from '@/components/ui/use-toast'
-
-interface Circle {
-  id: string
-  owner_id: string
-  name: string
-  description?: string
-  is_public: boolean
-  created_at: string
-  member_count: number
-  is_member: boolean
-  owner: {
-    id: string
-    email: string
-    user_metadata: {
-      full_name?: string
-      avatar_url?: string
-    }
-  }
-}
+import type { SocialCircle } from '~backend/social/types'
 
 export function useCircles() {
   const queryClient = useQueryClient()
@@ -29,79 +9,16 @@ export function useCircles() {
 
   const { data: circlesData, isLoading: loading, error } = useQuery({
     queryKey: ['social-circles'],
-    queryFn: async () => {
-      // Get all circles with member counts
-      const { data: circles, error } = await supabase
-        .from('social_circles')
-        .select(`
-          *,
-          owner:social_profiles!owner_id(user_id, username, display_name, avatar_url)
-        `)
-        .order('created_at', { ascending: false })
-
-      if (error) throw error
-
-      // Get membership info and member counts
-      const circlesWithMembership = await Promise.all(
-        (circles || []).map(async (circle) => {
-          // Check if current user is a member
-          const { data: membership } = await supabase
-            .from('social_circle_members')
-            .select('*')
-            .eq('circle_id', circle.id)
-            .eq('user_id', defaultUser.id)
-            .single()
-
-          // Get member count
-          const { count: memberCount } = await supabase
-            .from('social_circle_members')
-            .select('*', { count: 'exact', head: true })
-            .eq('circle_id', circle.id)
-
-          return {
-            ...circle,
-            member_count: memberCount || 0,
-            is_member: !!membership
-          }
-        })
-      )
-
-      return { circles: circlesWithMembership }
-    },
+    queryFn: () => backend.social.listCircles(),
   })
 
   const createCircleMutation = useMutation({
     mutationFn: async (data: {
       name: string
       description?: string
-      is_public?: boolean
+      is_public: boolean
     }) => {
-      // Create circle
-      const { data: circle, error } = await supabase
-        .from('social_circles')
-        .insert({
-          owner_id: defaultUser.id,
-          name: data.name,
-          description: data.description,
-          is_public: data.is_public ?? true
-        })
-        .select()
-        .single()
-
-      if (error) throw error
-
-      // Add creator as owner member
-      const { error: memberError } = await supabase
-        .from('social_circle_members')
-        .insert({
-          circle_id: circle.id,
-          user_id: defaultUser.id,
-          role: 'owner'
-        })
-
-      if (memberError) throw memberError
-
-      return circle
+      return backend.social.createCircle(data)
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-circles'] })
@@ -122,15 +39,7 @@ export function useCircles() {
 
   const joinCircleMutation = useMutation({
     mutationFn: async (circleId: string) => {
-      const { error } = await supabase
-        .from('social_circle_members')
-        .insert({
-          circle_id: circleId,
-          user_id: defaultUser.id,
-          role: 'member'
-        })
-
-      if (error) throw error
+      return backend.social.joinCircle({ circleId })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-circles'] })
@@ -151,13 +60,7 @@ export function useCircles() {
 
   const leaveCircleMutation = useMutation({
     mutationFn: async (circleId: string) => {
-      const { error } = await supabase
-        .from('social_circle_members')
-        .delete()
-        .eq('circle_id', circleId)
-        .eq('user_id', defaultUser.id)
-
-      if (error) throw error
+      return backend.social.leaveCircle({ circleId })
     },
     onSuccess: () => {
       queryClient.invalidateQueries({ queryKey: ['social-circles'] })
@@ -176,13 +79,13 @@ export function useCircles() {
     },
   })
 
-  const circles = circlesData?.circles || []
+  const circles: SocialCircle[] = circlesData?.circles || []
   const myCircles = circles.filter(circle => circle.is_member)
 
   const createCircle = async (data: {
     name: string
     description?: string
-    is_public?: boolean
+    is_public: boolean
   }) => {
     await createCircleMutation.mutateAsync(data)
   }
